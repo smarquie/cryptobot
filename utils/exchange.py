@@ -83,24 +83,57 @@ class Portfolio:
         }
 
 # ==================== HYPERLIQUID EXCHANGE INTERFACE ====================
+from hyperliquid.info import Info
+from hyperliquid.exchange import Exchange as HLExchange
+from typing import Dict, Any, Optional
+import pandas as pd
+
 class HyperliquidExchange:
     def __init__(self, testnet: bool = False):
         self.testnet = testnet
-        self.hyperliquid_info = Info(testnet=testnet)
-        self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)
+        try:
+            self.hyperliquid_info = Info(testnet=testnet)
+            self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)
+            print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
+        except Exception as e:
+            raise RuntimeError(f"❌ Failed to initialize Hyperliquid exchange: {e}")
 
     def get_market_data(self) -> Dict[str, float]:
-        return self.hyperliquid_info.all_mids()
+        """Get current mid prices"""
+        try:
+            return self.hyperliquid_info.all_mids()
+        except Exception as e:
+            print(f"❌ Failed to fetch market data: {e}")
+            return {}
 
     def place_order(self, symbol: str, action: str, size: float, reduce_only: bool = False) -> Optional[Dict]:
+        """Place a market order via Hyperliquid"""
         is_buy = action.lower() == 'buy'
         try:
-            result = self.hyperliquid_exchange.submit_order(symbol=symbol, is_buy=is_buy, sz=str(size), order_type={'type': 'limit', 'isMarket': True}, reduce_only=reduce_only)
-            print(f"📈 {action.upper()} order placed on Hyperliquid: {symbol} x {size}")
+            result = self.hyperliquid_exchange.submit_order(
+                symbol=symbol,
+                is_buy=is_buy,
+                sz=str(size),
+                order_type={'type': 'market'},  # ← Clean format
+                reduce_only=reduce_only
+            )
+            print(f"📈 {action.upper()} order placed: {symbol} x {size}")
             return result
         except Exception as e:
-            print(f"❌ Order failed: {e}")
+            print(f"❌ Failed to place order: {e}")
             return None
+
+    def get_candles_df(self, symbol: str, interval: str = '1m', lookback: int = 30) -> pd.DataFrame:
+        """Fetch OHLCV data from Hyperliquid"""
+        try:
+            raw_data = self.hyperliquid_info.get_candles(symbol, interval, lookback * 60_000)  # Convert minutes to ms
+            df = pd.DataFrame(raw_data, columns=['timestamp', 'open', 'high', 'low', 'close'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+            return df.sort_values('timestamp').reset_index(drop=True)
+        except Exception as e:
+            print(f"❌ Error fetching candles: {e}")
+            return pd.DataFrame()
 
 # ==================== COINBASE BACKTESTING INTERFACE ====================
 class CoinbaseExchange:
