@@ -4,6 +4,10 @@ class BotConfig:
     # Mode: 'backtest', 'paper', or 'live'
     MODE = 'paper'
 
+    # Portfolio settings
+    PAPER_INITIAL_BALANCE = 100000.0
+    INITIAL_BALANCE = PAPER_INITIAL_BALANCE  
+    
     # Trading symbols (Coinbase format)
     TRADING_SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT']  # Product IDs on Coinbase
 
