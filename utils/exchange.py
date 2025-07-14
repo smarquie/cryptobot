@@ -34,8 +34,9 @@ def validate_private_key(private_key: str) -> Optional[LocalAccount]:
 
 
 class ExchangeInterface:
-    def __init__(self, mode: str = 'live', wallet: Optional[Any] = None):
+    def __init__(self, mode='live', private_key=None):
         self.mode = mode
+        self.private_key = private_key
         self.symbols = BotConfig.TRADING_SYMBOLS
         self.wallet = wallet
         self.hyperliquid_info = None
