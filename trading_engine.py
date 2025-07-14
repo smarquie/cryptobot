@@ -15,6 +15,7 @@ from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrat
 from utils.exchange import ExchangeInterface
 from utils.telegram import TelegramNotifier
 from utils.logger import setup_logger
+from utils.portfolio import Portfolio
 
 setup_logger()
 logger = logging.getLogger(__name__)
