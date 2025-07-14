@@ -2,24 +2,13 @@
 
 from hyperliquid.info import Info as HLInfo
 from hyperliquid.exchange import Exchange as HLExchange
-from hyperliquid.utils import constants
 from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import time
 import random
 from config import BotConfig
-
-from hyperliquid.info import Info
-from hyperliquid.exchange import Exchange
-from hyperliquid.utils import constants
-
-testnet = True
-info = Info(base_url=constants.TESTNET_API_URL, skip_ws=True)
-exchange = Exchange(wallet=None, info=info)
-
-market_data = info.all_mids()
-print("Available symbols:", market_data.keys())
+import requests
 
 class ExchangeInterface:
     def __init__(self, mode: str = 'live'):
@@ -34,16 +23,15 @@ class ExchangeInterface:
         if self.mode == 'backtest':
             print("🧪 Backtest mode: Using simulated data")
             return
-    
+
         elif self.mode in ['paper', 'live']:
             testnet = (self.mode == 'paper')
             base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
             base_url = base_url.strip()
-    
+            
             try:
-                # Use the correct initialization for the new SDK
                 self.hyperliquid_info = HLInfo(base_url=base_url, skip_ws=True)
-                self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)  # ← This is now correct
+                self.hyperliquid_exchange = HLExchange(wallet=None, info=self.hyperliquid_info)
                 print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
             except Exception as e:
                 raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
@@ -65,14 +53,14 @@ class ExchangeInterface:
             }
 
     def get_candles_df(self, symbol: str, interval: str = '1m', lookback: int = 30) -> pd.DataFrame:
-        """Fetch OHLCV data from Hyperliquid or simulate it"""
+        """Fetch OHLCV data from Hyperliquid or simulate if unavailable"""
         if self.mode in ['paper', 'live']:
             try:
-                raw_data = self.hyperliquid_info.candles_snapshot(coin=symbol, interval=interval)
-                df = pd.DataFrame(raw_data)
-                df['timestamp'] = pd.to_datetime(df['T'], unit='ms')
-                df[['open', 'high', 'low', 'close', 'volume']] = df[['o', 'h', 'l', 'c', 'v']].astype(float)
-                return df[['timestamp', 'open', 'high', 'low', 'close', 'volume']].sort_values('timestamp').reset_index(drop=True)
+                raw_data = self.hyperliquid_info.get_candles(symbol=symbol, interval=interval, limit=lookback * 60_000)
+                df = pd.DataFrame(raw_data, columns=['timestamp', 'open', 'high', 'low', 'close'])
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+                return df.sort_values('timestamp').reset_index(drop=True)
             except Exception as e:
                 print(f"❌ Error fetching real candles: {e}")
                 return self._generate_fallback_candles(symbol, lookback)
@@ -85,14 +73,14 @@ class ExchangeInterface:
         if self.mode == 'backtest':
             print(f"[Backtest] Would have placed {action} order for {symbol} x {size}")
             return {"status": "simulated", "action": action, "size": size}
-    
+
         if not self.hyperliquid_exchange:
             print("❌ Exchange not initialized for live/paper mode")
             return None
-    
+
         is_buy = action.lower() == 'buy'
         sz = str(size)
-    
+
         try:
             result = self.hyperliquid_exchange.submit_order(
                 symbol=symbol,
@@ -108,7 +96,7 @@ class ExchangeInterface:
             return None
 
     def _generate_fallback_candles(self, symbol: str, lookback: int = 30) -> pd.DataFrame:
-        """Generate realistic fake candle data when real API fails"""
+        """Generate realistic fake candle data when API fails"""
         market_data = self.get_market_data()
         current_price = float(market_data.get(symbol, 60000))
 
