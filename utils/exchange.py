@@ -23,8 +23,14 @@ class ExchangeInterface:
 
         if mode in ['paper', 'live']:
             # Use Hyperliquid for live/paper
-            self.hyperliquid_info = Info(testnet=(mode == 'paper'))
-            self.hyperliquid_exchange = HLExchange(self.hyperliquid_info)
+            testnet = (mode == 'paper')
+            base_url = "https://api.hyperliquid.testnet.xyz " if testnet else "https://api.hyperliquid.xyz "
+            
+            try:
+                self.hyperliquid_info = Info(base_url=base_url)
+                self.hyperliquid_exchange = HLExchange(wallet=None, info=self.hyperliquid_info)
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize Hyperliquid connection: {e}")
         elif mode == 'backtest':
             # Use Coinbase for backtest
             self.client = RESTClient(api_key="dummy", api_secret="dummy", api_passphrase="dummy")
