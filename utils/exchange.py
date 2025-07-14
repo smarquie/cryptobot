@@ -10,6 +10,9 @@ import time
 import random
 from config import BotConfig
 
+market_data = info.all_mids()
+print("Available symbols:", market_data.keys())
+
 class ExchangeInterface:
     def __init__(self, mode: str = 'live'):
         self.mode = mode
