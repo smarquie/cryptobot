@@ -77,8 +77,7 @@ class Portfolio:
                 total_unrealized_pnl += (pos['entry_price'] - current_price) * pos['size']
 
         total_value = self.balance + total_unrealized_pnl
-        exposure_pct = (sum(pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) for pos in self.positions.values()) / total_value * 100
-        win_trades = [p for p in self.trade_history if p['pnl'] > 0]
+        exposure_pct = (sum((pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) for pos in self.positions.values())) / total_value * 100        win_trades = [p for p in self.trade_history if p['pnl'] > 0]
         win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0
 
         return {
