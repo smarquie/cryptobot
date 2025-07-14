@@ -23,17 +23,16 @@ class ExchangeInterface:
         if self.mode == 'backtest':
             print("🧪 Backtest mode: Using simulated data")
             return
-
+    
         elif self.mode in ['paper', 'live']:
             testnet = (self.mode == 'paper')
             base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
-            
-            # Ensure no trailing space
             base_url = base_url.strip()
-            
+    
             try:
+                # Use the correct initialization for the new SDK
                 self.hyperliquid_info = HLInfo(base_url=base_url, skip_ws=True)
-                self.hyperliquid_exchange = HLExchange(wallet=None, info=self.hyperliquid_info)
+                self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)  # ← This is now correct
                 print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
             except Exception as e:
                 raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
