@@ -66,26 +66,36 @@ class Portfolio:
         logger.info(f"📉 Closed {pos['side']} on {symbol} at ${price:.2f} | PnL: ${pnl:.2f} ({reason})")
         return True
 
-    def get_summary(self) -> Dict[str, Any]:
-        """Return portfolio summary including open positions and value"""
-        total_unrealized_pnl = 0.0
-        for symbol, pos in self.positions.items():
-            current_price = self.data_client.get_market_data().get(symbol, pos['entry_price'])
-            if pos['side'] == 'buy':
-                total_unrealized_pnl += (current_price - pos['entry_price']) * pos['size']
-            else:
-                total_unrealized_pnl += (pos['entry_price'] - current_price) * pos['size']
+def get_summary(self) -> Dict[str, Any]:
+    """Return portfolio summary including exposure, PnL, and positions"""
+    total_value = self.balance + sum(
+        pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) 
+        for pos in self.positions.values()
+    )
 
-        total_value = self.balance + total_unrealized_pnl
-        exposure_pct = (sum((pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) for pos in self.positions.values())) / total_value * 100        win_trades = [p for p in self.trade_history if p['pnl'] > 0]
-        win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0
+    total_unrealized_pnl = 0.0
+    for pos in self.positions.values():
+        current_price = self.data_client.get_market_data().get(pos['symbol'], pos['entry_price'])
+        if pos['side'] == 'buy':
+            total_unrealized_pnl += (current_price - pos['entry_price']) * pos['size']
+        else:
+            total_unrealized_pnl += (pos['entry_price'] - current_price) * pos['size']
 
-        return {
-            'balance': self.balance,
-            'total_value': total_value,
-            'open_positions': len(self.positions),
-            'unrealized_pnl': total_unrealized_pnl,
-            'exposure_pct': exposure_pct,
-            'win_rate': win_rate,
-            'trade_count': len(self.trade_history)
-        }
+    # ← Make sure this line is on a new line
+    exposure_pct = (sum(
+        (pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) 
+        for pos in self.positions.values()
+    )) / total_value * 100 if total_value > 0 else 0.0
+
+    win_trades = [p for p in self.trade_history if p['pnl'] > 0]
+    win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0.0
+
+    return {
+        'balance': self.balance,
+        'total_value': total_value,
+        'open_positions': len(self.positions),
+        'unrealized_pnl': total_unrealized_pnl,
+        'exposure_pct': exposure_pct,
+        'win_rate': win_rate,
+        'trade_count': len(self.trade_history)
+    }
