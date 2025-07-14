@@ -1,58 +1,68 @@
 # utils/exchange.py
 
+from hyperliquid.info import Info
+from hyperliquid.exchange import Exchange as HLExchange
 from coinbase.rest import RESTClient
 import pandas as pd
-from datetime import datetime, timedelta
-import time
+from typing import Dict, Optional
 
-class CoinbaseExchange:
-    def __init__(self, api_key: str, secret_key: str, passphrase: str):
-        self.client = RESTClient(api_key=api_key, api_secret=secret_key, api_passphrase=passphrase)
-        self.product_ids = []
+class ExchangeInterface:
+    def __init__(self, mode: str = 'live'):
+        self.mode = mode
+        self.client = None
+        self.symbols = []
 
-    def get_market_data(self) -> dict:
-        """Get current prices for all symbols"""
+        if mode in ['paper', 'live']:
+            # Use Hyperliquid for live/paper
+            self.hyperliquid_info = Info(testnet=(mode == 'paper'))
+            self.hyperliquid_exchange = HLExchange(self.hyperliquid_info)
+        elif mode == 'backtest':
+            # Use Coinbase for backtest
+            self.client = RESTClient(api_key="dummy", api_secret="dummy", api_passphrase="dummy")
+
+    def get_market_data(self) -> Dict[str, float]:
+        if self.mode in ['paper', 'live']:
+            return self.hyperliquid_info.all_mids()
+        elif self.mode == 'backtest':
+            return {
+                symbol.split('-')[0]: float(self.client.get_best_bid_ask(product_id=symbol)['bid'])
+                for symbol in ['BTC-USDT', 'ETH-USDT', 'SOL-USDT']
+            }
+
+    def get_candles_df(self, symbol: str, interval: str = '1m', lookback: int = 30) -> pd.DataFrame:
+        if self.mode in ['paper', 'live']:
+            # Get real data from Hyperliquid (you may need to implement this)
+            pass
+        elif self.mode == 'backtest':
+            # Get historical data from Coinbase
+            raw_data = self.client.get_candlesticks(product_id=symbol, granularity=interval, limit=lookback)
+            df = pd.DataFrame(raw_data['candles'], columns=['start', 'low', 'high', 'open', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['start'].astype(int), unit='s')
+            df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
+            return df.sort_values('timestamp').reset_index(drop=True)
+        return pd.DataFrame()
+
+class Portfolio:
+    def __init__(self):
+        self.positions = {}
+        self.balance = BotConfig.PAPER_INITIAL_BALANCE
+
+    def has_position(self, symbol: str) -> bool:
+        return symbol in self.positions
+
+    def calculate_position_size(self, signal: Dict, entry_price: float) -> float:
+        portfolio_value = self.balance + sum(p.size * p.entry_price for p in self.positions.values())
+        risk_amount = portfolio_value * BotConfig.RISK_PER_TRADE
+        risk_per_unit = abs(entry_price - signal['stop_loss'])
+        return risk_amount / risk_per_unit
+
+    def open_position(self, signal: Dict, symbol: str, price: float) -> bool:
+        # Implement actual opening logic
+        return True
+
+    def get_summary(self) -> Dict:
         return {
-            symbol.split('-')[0]: float(self.client.get_best_bid_ask(product_id=symbol)['bid'])
-            for symbol in self.product_ids
+            'balance': self.balance,
+            'total_value': self.balance,
+            'open_positions': len(self.positions)
         }
-
-    def get_candles_df(self, product_id: str, interval: str = 'ONE_MINUTE', lookback: int = 30) -> pd.DataFrame:
-        """
-        Fetch historical candles from Coinbase
-        Supported intervals:
-        ONE_MINUTE, FIVE_MINUTE, FIFTEEN_MINUTE, THIRTY_MINUTE,
-        ONE_HOUR, TWO_HOUR, SIX_HOUR, TWENTY_FOUR_HOUR
-        """
-        granularity_map = {
-            '1m': 'ONE_MINUTE',
-            '5m': 'FIVE_MINUTE',
-            '15m': 'FIFTEEN_MINUTE',
-            '1h': 'ONE_HOUR'
-        }
-        granularity = granularity_map.get(interval, 'ONE_MINUTE')
-
-        raw_data = self.client.get_candlesticks(product_id=product_id, granularity=granularity, limit=lookback)
-        df = pd.DataFrame(raw_data['candles'], columns=[
-            'start', 'low', 'high', 'open', 'close', 'volume'
-        ])
-        df['timestamp'] = pd.to_datetime(df['start'].astype(int), unit='s')
-        df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
-        df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
-        return df.sort_values('timestamp').reset_index(drop=True)
-
-    def place_order(self, product_id: str, side: str, size: float, price: float = None, order_type: str = 'market'):
-        """
-        Place a market order on Coinbase
-        Only market orders supported in this version
-        """
-        if order_type == 'market':
-            response = self.client.market_order(
-                client_oid=f"bot_{int(time.time())}",
-                product_id=product_id,
-                side=side.upper(),
-                size=str(size)
-            )
-            return response
-        else:
-            raise NotImplementedError("Only market orders are supported")
