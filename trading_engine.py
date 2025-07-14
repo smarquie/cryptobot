@@ -47,10 +47,9 @@ class SignalAggregator:
 
 class TradingEngine:
     def __init__(self):
-        self.portfolio = Portfolio(self.exchange)
         self.config = BotConfig
         self.exchange = ExchangeInterface(mode=BotConfig.MODE)
-        #self.portfolio = self.exchange.get_portfolio()
+        self.portfolio = self.exchange.get_portfolio()
         self.aggregator = SignalAggregator()
         self.telegram = TelegramNotifier(BotConfig.TELEGRAM_BOT_TOKEN, BotConfig.TELEGRAM_CHAT_ID)
         self.is_running = False
