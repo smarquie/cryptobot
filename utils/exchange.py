@@ -2,6 +2,15 @@
 
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange as HLExchange
+from typing import Dict, Any, Optional
+import pandas as pd
+import numpy as np
+import time
+import random
+from config import BotConfig
+
+from hyperliquid.info import Info
+from hyperliquid.exchange import Exchange as HLExchange
 from coinbase.rest import RESTClient
 import pandas as pd
 from typing import Dict, Optional
@@ -65,4 +74,59 @@ class Portfolio:
             'balance': self.balance,
             'total_value': self.balance,
             'open_positions': len(self.positions)
+        }
+
+# ==================== HYPERLIQUID EXCHANGE INTERFACE ====================
+class HyperliquidExchange:
+    def __init__(self, testnet: bool = False):
+        self.testnet = testnet
+        self.hyperliquid_info = Info(testnet=testnet)
+        self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)
+
+    def get_market_data(self) -> Dict[str, float]:
+        return self.hyperliquid_info.all_mids()
+
+    def place_order(self, symbol: str, action: str, size: float, reduce_only: bool = False) -> Optional[Dict]:
+        is_buy = action.lower() == 'buy'
+        try:
+            result = self.hyperliquid_exchange.submit_order(symbol=symbol, is_buy=is_buy, sz=str(size), order_type={'type': 'limit', 'isMarket': True}, reduce_only=reduce_only)
+            print(f"📈 {action.upper()} order placed on Hyperliquid: {symbol} x {size}")
+            return result
+        except Exception as e:
+            print(f"❌ Order failed: {e}")
+            return None
+
+# ==================== COINBASE BACKTESTING INTERFACE ====================
+class CoinbaseExchange:
+    def __init__(self, api_key: str = "", secret: str = "", passphrase: str = ""):
+        # Placeholder for real Coinbase SDK
+        pass
+
+    def get_candles_df(self, symbol: str, interval: str = "1m", lookback: int = 30) -> pd.DataFrame:
+        """Generate fake OHLCV data for backtest"""
+        now = int(time.time()) * 1000
+        timestamps = [now - (lookback - i) * 60_000 for i in range(lookback)]
+        prices = np.random.normal(60000, 1000, lookback)
+        opens = prices * np.random.uniform(0.995, 1.005, lookback)
+        highs = prices * np.random.uniform(1.000, 1.005, lookback)
+        lows = prices * np.random.uniform(0.995, 1.000, lookback)
+        closes = prices
+        volumes = np.random.uniform(1, 100, lookback)
+
+        df = pd.DataFrame({
+            'timestamp': pd.to_datetime([ts / 1000 for ts in timestamps], unit='s'),
+            'open': opens,
+            'high': highs,
+            'low': lows,
+            'close': closes,
+            'volume': volumes
+        })
+        return df
+
+    def get_market_data(self) -> Dict[str, float]:
+        """Return simulated market data for backtest"""
+        return {
+            'BTC': np.random.uniform(58000, 62000),
+            'ETH': np.random.uniform(1700, 3000),
+            'SOL': np.random.uniform(100, 200)
         }
