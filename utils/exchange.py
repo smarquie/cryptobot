@@ -16,7 +16,7 @@ from hyperliquid.utils import constants
 
 testnet = True
 info = Info(base_url=constants.TESTNET_API_URL, skip_ws=True)
-exchange = Exchange(wallet=None, testnet=testnet)
+exchange = Exchange(wallet=None, info=info)
 
 market_data = info.all_mids()
 print("Available symbols:", market_data.keys())
