@@ -32,7 +32,7 @@ class ExchangeInterface:
             
             try:
                 self.hyperliquid_info = HLInfo(base_url=base_url, skip_ws=True)
-                self.hyperliquid_exchange = HLExchange(wallet=None, info=self.hyperliquid_info)
+                self.hyperliquid_exchange = HLExchange(wallet=None, testnet=testnet)
                 print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
             except Exception as e:
                 raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
