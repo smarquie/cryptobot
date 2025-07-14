@@ -10,6 +10,14 @@ import time
 import random
 from config import BotConfig
 
+from hyperliquid.info import Info
+from hyperliquid.exchange import Exchange
+from hyperliquid.utils import constants
+
+testnet = True
+info = Info(base_url=constants.TESTNET_API_URL, skip_ws=True)
+exchange = Exchange(wallet=None, testnet=testnet)
+
 market_data = info.all_mids()
 print("Available symbols:", market_data.keys())
 
