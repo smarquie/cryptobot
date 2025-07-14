@@ -5,7 +5,7 @@ import numpy as np
 from typing import Dict, Any
 from .base import Strategy
 from config import BotConfig
-from utils.ta import TechnicalAnalysiss
+from utils.ta import TechnicalAnalysis
 
 class FastScalpStrategy(Strategy):
     def __init__(self):
