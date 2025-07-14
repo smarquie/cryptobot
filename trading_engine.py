@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 # Local imports
+from utils.wallet import validate_private_key
 from config import BotConfig
 from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy, SignalAggregator
 from utils.exchange import ExchangeInterface
@@ -50,10 +51,15 @@ class TradingEngine:
     def __init__(self):
         self.config = BotConfig
         self.private_key = BotConfig.HYPERLIQUID_PRIVATE_KEY
-        self.wallet = validate_private_key(self.private_key)       
-        self.exchange = ExchangeInterface(mode=BotConfig.MODE, wallet=self.wallet)
+        self.wallet = validate_private_key(self.private_key)
+
+        self.exchange = ExchangeInterface(mode=BotConfig.MODE, private_key=self.private_key)
         self.portfolio = Portfolio()
-        self.telegram = TelegramNotifier(BotConfig.TELEGRAM_BOT_TOKEN, BotConfig.TELEGRAM_CHAT_ID)
+        self.aggregator = SignalAggregator()
+        self.telegram = TelegramNotifier(
+            BotConfig.TELEGRAM_BOT_TOKEN,
+            BotConfig.TELEGRAM_CHAT_ID
+        )        
         self.aggregator = SignalAggregator()
         self.is_running = False
         self.cycle_count = 0
