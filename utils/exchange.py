@@ -77,14 +77,14 @@ class ExchangeInterface:
         if self.mode == 'backtest':
             print(f"[Backtest] Would have placed {action} order for {symbol} x {size}")
             return {"status": "simulated", "action": action, "size": size}
-
+    
         if not self.hyperliquid_exchange:
             print("❌ Exchange not initialized for live/paper mode")
             return None
-
+    
         is_buy = action.lower() == 'buy'
         sz = str(size)
-
+    
         try:
             result = self.hyperliquid_exchange.submit_order(
                 symbol=symbol,
