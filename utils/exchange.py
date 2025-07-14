@@ -13,12 +13,11 @@ import eth_account
 from eth_account.signers.local import LocalAccount
 
 class ExchangeInterface:
-    def __init__(self, mode: str = 'live', private_key: str = None):
+    def __init__(self, mode: str = 'live'):
         self.mode = mode
         self.symbols = BotConfig.TRADING_SYMBOLS
         self.hyperliquid_info = None
         self.hyperliquid_exchange = None
-        self.private_key = private_key
         self._initialize_client()
 
     def _initialize_client(self):
@@ -35,16 +34,15 @@ class ExchangeInterface:
                 # Initialize Info client (doesn't require private key)
                 self.hyperliquid_info = Info(base_url=base_url, skip_ws=True)
                 
-                # Initialize Exchange client (requires private key for trading)
-                if self.private_key:
-                    # Create wallet from private key
-                    wallet = eth_account.Account.from_key(self.private_key)
+                # Initialize Exchange client - will be set up later with private key
+                # This allows the framework to handle private key injection separately
+                if hasattr(BotConfig, 'HYPERLIQUID_PRIVATE_KEY') and BotConfig.HYPERLIQUID_PRIVATE_KEY:
+                    wallet = eth_account.Account.from_key(BotConfig.HYPERLIQUID_PRIVATE_KEY)
                     self.hyperliquid_exchange = Exchange(wallet, base_url, account_address=wallet.address)
+                    print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'} with trading enabled")
                 else:
-                    print("⚠️ No private key provided - Info functions only (no trading)")
+                    print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'} - Info only (add private key for trading)")
                     
-                print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
-                
             except Exception as e:
                 raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
         else:
@@ -113,6 +111,25 @@ class ExchangeInterface:
 
         elif self.mode == 'backtest':
             return self._generate_fallback_candles(symbol, lookback)
+
+    def set_private_key(self, private_key: str):
+        """Set private key and initialize exchange for trading (called by framework)"""
+        if self.mode == 'backtest':
+            return
+            
+        if not private_key:
+            print("❌ No private key provided")
+            return
+            
+        testnet = (self.mode == 'paper')
+        base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
+        
+        try:
+            wallet = eth_account.Account.from_key(private_key)
+            self.hyperliquid_exchange = Exchange(wallet, base_url, account_address=wallet.address)
+            print(f"✅ Trading enabled for Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
+        except Exception as e:
+            print(f"❌ Failed to initialize trading: {e}")
 
     def place_order(self, symbol: str, action: str, size: float, reduce_only: bool = False) -> Optional[Dict]:
         """Place market order via Hyperliquid"""
