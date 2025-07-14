@@ -9,6 +9,30 @@ import numpy as np
 import random
 from config import BotConfig
 
+import eth_account
+from eth_account.signers.local import LocalAccount
+from hyperliquid.info import Info as HLInfo
+from hyperliquid.exchange import Exchange as HLExchange
+from config import BotConfig
+
+def validate_private_key(private_key: str) -> Optional[LocalAccount]:
+    if not private_key or len(private_key.strip()) == 0:
+        print("ℹ️ Read-only connection – no private key provided")
+        return None
+
+    try:
+        cleaned_key = private_key.strip().replace('0x', '')
+        if len(cleaned_key) != 64:
+            raise ValueError(f"Key must be 64 chars, got {len(cleaned_key)}")
+
+        wallet = eth_account.Account.from_key(cleaned_key)
+        print(f"✅ Wallet loaded: {wallet.address}")
+        return wallet
+    except Exception as e:
+        print(f"❌ Invalid private key: {e}")
+        return None
+
+
 class ExchangeInterface:
     def __init__(self, mode: str = 'live', wallet: Optional[Any] = None):
         self.mode = mode
@@ -133,3 +157,4 @@ class ExchangeInterface:
             'XRP': (0.4, 0.8),
         }
         return ranges.get(symbol, (10, 1000))  # Default fallback range
+
