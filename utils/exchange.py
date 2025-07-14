@@ -124,9 +124,33 @@ class CoinbaseExchange:
         return df
 
     def get_market_data(self) -> Dict[str, float]:
-        """Return simulated market data for backtest"""
-        return {
-            'BTC': np.random.uniform(58000, 62000),
-            'ETH': np.random.uniform(1700, 3000),
-            'SOL': np.random.uniform(100, 200)
+        """Get current prices for all symbols in config"""
+        from config import BotConfig
+        if self.mode == 'backtest':
+            # Simulated market data
+            return {
+                symbol: np.random.uniform(
+                    self._get_price_range(symbol)[0],
+                    self._get_price_range(symbol)[1]
+                )
+                for symbol in BotConfig.TRADING_SYMBOLS
+            }
+    
+        elif self.mode in ['paper', 'live']:
+            try:
+                return self.hyperliquid_info.all_mids()
+            except Exception as e:
+                print(f"❌ Hyperliquid API error: {e}")
+                return {}
+    
+    def _get_price_range(self, symbol: str):
+        ranges = {
+            'BTC': (58000, 62000),
+            'ETH': (1700, 3000),
+            'SOL': (100, 200),
+            'AVAX': (10, 100),  # Example for AVAX
+            'DOGE': (0.05, 0.15),
+            'XRP': (0.4, 0.8),
+            # Add more as needed
         }
+        return ranges.get(symbol, (10, 1000))  # Default fallback range
