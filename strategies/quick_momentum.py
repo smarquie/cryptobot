@@ -1,5 +1,8 @@
 # strategies/quick_momentum.py
 
+import pandas as pd
+import numpy as np
+from typing import Dict, Any
 from .base import Strategy
 from config import BotConfig
 from utils.ta import TechnicalAnalysis
