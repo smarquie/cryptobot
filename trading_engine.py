@@ -294,3 +294,16 @@ def help_commands():
     print(" • complete_stop_bot() → Stop the bot")
     print(" • check_status() → View current status")
     print(" • help_commands() → Show this list")
+
+async def backtest_bot(symbol: str = 'BTC-USDT', days_back: int = 7):
+    from datetime import datetime, timedelta
+    end_time = int(datetime.now().timestamp())
+    start_time = end_time - (days_back * 86400)
+    print(f"🧪 Starting backtest for {symbol} from {datetime.fromtimestamp(start_time)} to {datetime.fromtimestamp(end_time)}")
+    engine = TradingEngine()
+    df = engine.data_client.get_candles_df(symbol, interval='1m', lookback=1000)
+    if df.empty:
+        print("❌ No data available for backtest")
+        return
+    signal = engine.aggregator.aggregate(df, symbol)
+    print("📈 Best Signal:", signal)
