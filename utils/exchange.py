@@ -2,6 +2,7 @@
 
 from hyperliquid.info import Info as HLInfo
 from hyperliquid.exchange import Exchange as HLExchange
+from hyperliquid.utils import constants  
 from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
