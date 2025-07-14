@@ -1,8 +1,8 @@
 # utils/exchange.py
 
-from hyperliquid.info import Info
-from hyperliquid.exchange import Exchange
-from hyperliquid.utils import constants  
+from hyperliquid.info import Info as HLInfo
+from hyperliquid.exchange import Exchange as HLExchange
+from hyperliquid.utils import constants
 from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
@@ -13,11 +13,13 @@ import eth_account
 from eth_account.signers.local import LocalAccount
 
 class ExchangeInterface:
-    def __init__(self, mode: str = 'live'):
+    def __init__(self, mode: str = 'live', private_key: Optional[str] = None):
         self.mode = mode
+        self.private_key = private_key
         self.symbols = BotConfig.TRADING_SYMBOLS
         self.hyperliquid_info = None
         self.hyperliquid_exchange = None
+        self.account_address = None
         self._initialize_client()
 
     def _initialize_client(self):
@@ -29,34 +31,53 @@ class ExchangeInterface:
         elif self.mode in ['paper', 'live']:
             testnet = (self.mode == 'paper')
             base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
-            
+
             try:
-                # Initialize Info client (doesn't require private key)
-                self.hyperliquid_info = Info(base_url=base_url, skip_ws=True)
-                
-                # Initialize Exchange client - will be set up later with private key
-                # This allows the framework to handle private key injection separately
-                if hasattr(BotConfig, 'HYPERLIQUID_PRIVATE_KEY') and BotConfig.HYPERLIQUID_PRIVATE_KEY:
-                    wallet = eth_account.Account.from_key(BotConfig.HYPERLIQUID_PRIVATE_KEY)
-                    self.hyperliquid_exchange = Exchange(wallet, base_url, account_address=wallet.address)
-                    print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'} with trading enabled")
+                # Initialize read-only info first
+                self.hyperliquid_info = HLInfo(base_url=base_url, skip_ws=True)
+
+                # Only initialize trading if private key provided
+                if self.private_key and self.private_key.strip():
+                    wallet = eth_account.Account.from_key(self.private_key)
+                    self.account_address = wallet.address
+                    self.hyperliquid_exchange = HLExchange(wallet, base_url, account_address=self.account_address)
+                    print(f"✅ Trading enabled for Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
+                    print(f"👛 Wallet Address: {self.account_address}")
                 else:
-                    print(f"✅ Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'} - Info only (add private key for trading)")
-                    
+                    print("ℹ️ Read-only connection - no private key provided")
+
             except Exception as e:
                 raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
         else:
             raise ValueError(f"Invalid mode: {self.mode}. Use 'backtest', 'paper', or 'live'")
+
+    def set_private_key(self, private_key: str):
+        """Set private key dynamically after initialization"""
+        if not private_key or not private_key.strip():
+            print("❌ Cannot set empty private key")
+            return False
+
+        testnet = (self.mode == 'paper')
+        base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
+
+        try:
+            wallet = eth_account.Account.from_key(private_key)
+            self.account_address = wallet.address
+            self.hyperliquid_exchange = HLExchange(wallet, base_url, account_address=self.account_address)
+            print(f"🔑 Private key set for wallet: {self.account_address}")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to set private key: {e}")
+            return False
 
     def get_market_data(self) -> Dict[str, float]:
         """Get current prices for all symbols"""
         if self.mode in ['paper', 'live']:
             try:
                 all_mids = self.hyperliquid_info.all_mids()
-                # Filter to only our symbols
                 return {symbol: all_mids.get(symbol, 0.0) for symbol in self.symbols if symbol in all_mids}
             except Exception as e:
-                print(f"❌ Failed to fetch market data: {e}")
+                print(f"❌ Failed to fetch market  {e}")
                 return {}
         elif self.mode == 'backtest':
             return {
@@ -68,68 +89,17 @@ class ExchangeInterface:
         """Fetch OHLCV data from Hyperliquid or simulate if unavailable"""
         if self.mode in ['paper', 'live']:
             try:
-                # Note: Hyperliquid uses different interval format - convert if needed
-                interval_map = {
-                    '1m': '1m',
-                    '5m': '5m', 
-                    '15m': '15m',
-                    '1h': '1h',
-                    '4h': '4h',
-                    '1d': '1d'
-                }
-                hl_interval = interval_map.get(interval, '1m')
-                
-                # Request recent candles
-                candles = self.hyperliquid_info.candles_snapshot(
-                    coin=symbol,
-                    interval=hl_interval,
-                    startTime=int((time.time() - lookback * 60) * 1000),  # lookback minutes
-                    endTime=int(time.time() * 1000)
-                )
-                
-                if candles and len(candles) > 0:
-                    df = pd.DataFrame(candles)
-                    # Hyperliquid returns: t (time), o (open), h (high), l (low), c (close), v (volume)
-                    df = df.rename(columns={
-                        't': 'timestamp',
-                        'o': 'open', 
-                        'h': 'high',
-                        'l': 'low',
-                        'c': 'close',
-                        'v': 'volume'
-                    })
-                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                    df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
-                    return df.sort_values('timestamp').reset_index(drop=True)
-                else:
-                    print(f"❌ No candle data returned for {symbol}")
-                    return self._generate_fallback_candles(symbol, lookback)
-                    
+                candles = self.hyperliquid_info.candles_snapshot(coin=symbol, interval=interval)
+                df = pd.DataFrame(candles)
+                df['timestamp'] = pd.to_datetime(df['t'], unit='ms')
+                df[['open', 'high', 'low', 'close']] = df[['o', 'h', 'l', 'c']].astype(float)
+                df = df[['timestamp', 'open', 'high', 'low', 'close']].sort_values('timestamp').reset_index(drop=True)
+                return df[-lookback:] if len(df) > lookback else df
             except Exception as e:
                 print(f"❌ Error fetching real candles: {e}")
                 return self._generate_fallback_candles(symbol, lookback)
-
         elif self.mode == 'backtest':
             return self._generate_fallback_candles(symbol, lookback)
-
-    def set_private_key(self, private_key: str):
-        """Set private key and initialize exchange for trading (called by framework)"""
-        if self.mode == 'backtest':
-            return
-            
-        if not private_key:
-            print("❌ No private key provided")
-            return
-            
-        testnet = (self.mode == 'paper')
-        base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
-        
-        try:
-            wallet = eth_account.Account.from_key(private_key)
-            self.hyperliquid_exchange = Exchange(wallet, base_url, account_address=wallet.address)
-            print(f"✅ Trading enabled for Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
-        except Exception as e:
-            print(f"❌ Failed to initialize trading: {e}")
 
     def place_order(self, symbol: str, action: str, size: float, reduce_only: bool = False) -> Optional[Dict]:
         """Place market order via Hyperliquid"""
@@ -142,81 +112,20 @@ class ExchangeInterface:
             return None
 
         is_buy = action.lower() == 'buy'
+        sz = str(size)
 
         try:
-            # Use market_open for opening positions or market_close for closing
-            if reduce_only:
-                # For closing positions, use market_close
-                result = self.hyperliquid_exchange.market_close(symbol)
-            else:
-                # For opening positions, use market_open
-                result = self.hyperliquid_exchange.market_open(
-                    coin=symbol,
-                    is_buy=is_buy,
-                    sz=size,
-                    px=None,  # None for market order
-                    slippage=0.05  # 5% slippage tolerance
-                )
-            
-            if result and result.get("status") == "ok":
-                print(f"📈 {action.upper()} order placed: {symbol} x {size}")
-                return result
-            else:
-                print(f"❌ Order failed: {result}")
-                return None
-                
-        except Exception as e:
-            print(f"❌ Order failed: {e}")
-            return None
-
-    def get_account_info(self) -> Dict[str, Any]:
-        """Get account information"""
-        if self.mode == 'backtest':
-            return {"mode": "backtest", "balance": 10000}
-            
-        if not self.hyperliquid_info:
-            return {}
-            
-        try:
-            if self.hyperliquid_exchange:
-                user_state = self.hyperliquid_info.user_state(self.hyperliquid_exchange.wallet.address)
-                return user_state
-            else:
-                return {"error": "No wallet address available"}
-        except Exception as e:
-            print(f"❌ Failed to get account info: {e}")
-            return {}
-
-    def get_open_orders(self) -> list:
-        """Get open orders"""
-        if self.mode == 'backtest':
-            return []
-            
-        if not self.hyperliquid_info or not self.hyperliquid_exchange:
-            return []
-            
-        try:
-            return self.hyperliquid_info.open_orders(self.hyperliquid_exchange.wallet.address)
-        except Exception as e:
-            print(f"❌ Failed to get open orders: {e}")
-            return []
-
-    def cancel_order(self, symbol: str, order_id: int) -> Optional[Dict]:
-        """Cancel specific order"""
-        if self.mode == 'backtest':
-            print(f"[Backtest] Would have cancelled order {order_id}")
-            return {"status": "simulated"}
-            
-        if not self.hyperliquid_exchange:
-            print("❌ Exchange not initialized")
-            return None
-            
-        try:
-            result = self.hyperliquid_exchange.cancel(symbol, order_id)
-            print(f"🚫 Cancelled order {order_id}")
+            result = self.hyperliquid_exchange.submit_order(
+                symbol=symbol,
+                is_buy=is_buy,
+                sz=sz,
+                order_type={'type': 'market'},
+                reduce_only=reduce_only
+            )
+            print(f"📈 {action.upper()} order placed: {symbol} x {size}")
             return result
         except Exception as e:
-            print(f"❌ Failed to cancel order: {e}")
+            print(f"❌ Order failed: {e}")
             return None
 
     def _generate_fallback_candles(self, symbol: str, lookback: int = 30) -> pd.DataFrame:
@@ -250,7 +159,6 @@ class ExchangeInterface:
         return pd.DataFrame(candles_data)
 
     def _get_price_range(self, symbol: str):
-        """Price ranges for simulation"""
         ranges = {
             'BTC': (58000, 62000),
             'ETH': (1700, 3000),
