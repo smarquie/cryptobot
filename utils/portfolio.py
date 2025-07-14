@@ -24,7 +24,7 @@ class Position:
 
 class Portfolio:
     def __init__(self):
-        self.balance = BotConfig.PAPER_INITIAL_BALANCE
+        self.balance = BotConfig.INITIAL_BALANCE
         self.positions = {}
         self.trade_history = []  # Added missing attribute
         self.data_client = None  # Added missing attribute - you'll need to initialize this properly
