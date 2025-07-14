@@ -1,3 +1,9 @@
+# strategies/quick_momentum.py
+
+from .base import Strategy
+from config import BotConfig
+from utils.ta import TechnicalAnalysis
+
 class QuickMomentumStrategy(Strategy):
     def __init__(self):
         super().__init__("Quick-Momentum")
@@ -12,15 +18,16 @@ class QuickMomentumStrategy(Strategy):
         current_price = float(close.iloc[-1])
 
         # EMA crossover
-        ema_fast = TA.fast_ema(close, BotConfig.MOMENTUM_EMA_FAST)
-        ema_slow = TA.fast_ema(close, BotConfig.MOMENTUM_EMA_SLOW)
+        ema_fast = TechnicalAnalysis.fast_ema(close, BotConfig.MOMENTUM_EMA_FAST)
+        ema_slow = TechnicalAnalysis.fast_ema(close, BotConfig.MOMENTUM_EMA_SLOW)
         current_ema_fast = float(ema_fast.iloc[-1]) if not pd.isna(ema_fast.iloc[-1]) else current_price
         current_ema_slow = float(ema_slow.iloc[-1]) if not pd.isna(ema_slow.iloc[-1]) else current_price
         ema_cross = current_ema_fast > current_ema_slow
 
-        # Price change
-        growth_window = BotConfig.MOMENTUM_GCP_CONFIG[symbol]['growth_window']
-        plateau_window = BotConfig.MOMENTUM_GCP_CONFIG[symbol]['plateau_window']
+        # Price growth detection
+        gcp_config = BotConfig.MOMENTUM_GCP_CONFIG[symbol]
+        growth_window = gcp_config['growth_window']
+        plateau_window = gcp_config['plateau_window']
         recent_growth = close.iloc[-growth_window:]
         recent_plateau = close.iloc[-plateau_window:]
         growth_pct = ((recent_growth.iloc[-1] / recent_growth.iloc[0] - 1) * 100)
@@ -33,6 +40,7 @@ class QuickMomentumStrategy(Strategy):
         action = 'hold'
         reason = 'No signal'
 
+        # BUY SIGNAL
         if (growth_pct > BotConfig.MOMENTUM_MIN_PRICE_CHANGE and
             plateau_range < 0.5 and
             ema_cross and
@@ -45,6 +53,7 @@ class QuickMomentumStrategy(Strategy):
             action = 'buy'
             reason = f'Quick-Momentum BUY: Growth={growth_pct:.2f}%, Plateau={plateau_range:.2f}%'
 
+        # SELL SIGNAL
         elif (growth_pct < -BotConfig.MOMENTUM_MIN_PRICE_CHANGE and
               plateau_range < 0.5 and
               not ema_cross and
@@ -62,12 +71,16 @@ class QuickMomentumStrategy(Strategy):
             reason = f'Confidence too low: {confidence:.2f}'
             confidence = 0.0
 
+        # Set stop loss and take profit
+        atr = TechnicalAnalysis.calculate_atr(df['high'], df['low'], df['close'], period=BotConfig.MOMENTUM_ATR_PERIOD)
+        current_atr = float(atr.iloc[-1]) if not pd.isna(atr.iloc[-1]) else 0.0
+
         if action == 'buy':
-            stop_loss = current_price * (1 - BotConfig.MOMENTUM_STOP_LOSS)
-            take_profit = current_price * (1 + BotConfig.MOMENTUM_PROFIT_TARGET)
+            stop_loss = current_price - current_atr * BotConfig.MOMENTUM_ATR_MULTIPLIER_SL
+            take_profit = current_price + current_atr * BotConfig.MOMENTUM_ATR_MULTIPLIER_TP
         elif action == 'sell':
-            stop_loss = current_price * (1 + BotConfig.MOMENTUM_STOP_LOSS)
-            take_profit = current_price * (1 - BotConfig.MOMENTUM_PROFIT_TARGET)
+            stop_loss = current_price + current_atr * BotConfig.MOMENTUM_ATR_MULTIPLIER_SL
+            take_profit = current_price - current_atr * BotConfig.MOMENTUM_ATR_MULTIPLIER_TP
         else:
             stop_loss = current_price
             take_profit = current_price
