@@ -55,6 +55,11 @@ class BotConfig:
     COINBASE_API_SECRET = "your_secret"
     COINBASE_PASSPHRASE = "your_passphrase"
 
+    ENABLE_TELEGRAM_ALERTS = True
+    HYPERLIQUID_API_URL = "https://api.hyperliquid.xyz "  # or testnet
+    MIN_DATA_MINUTES = 5  # Reduced for faster testing
+    DATA_VALIDATION_ENABLED = False  # Set to True in production
+
     # Minimum data requirement
     MIN_DATA_MINUTES = 20
     DATA_VALIDATION_ENABLED = True
