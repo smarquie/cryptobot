@@ -102,26 +102,22 @@ class CoinbaseExchange:
         # Placeholder for real Coinbase SDK
         pass
 
-    def get_candles_df(self, symbol: str, interval: str = "1m", lookback: int = 30) -> pd.DataFrame:
-        """Generate fake OHLCV data for backtest"""
-        now = int(time.time()) * 1000
-        timestamps = [now - (lookback - i) * 60_000 for i in range(lookback)]
-        prices = np.random.normal(60000, 1000, lookback)
-        opens = prices * np.random.uniform(0.995, 1.005, lookback)
-        highs = prices * np.random.uniform(1.000, 1.005, lookback)
-        lows = prices * np.random.uniform(0.995, 1.000, lookback)
-        closes = prices
-        volumes = np.random.uniform(1, 100, lookback)
-
-        df = pd.DataFrame({
-            'timestamp': pd.to_datetime([ts / 1000 for ts in timestamps], unit='s'),
-            'open': opens,
-            'high': highs,
-            'low': lows,
-            'close': closes,
-            'volume': volumes
-        })
-        return df
+    def get_candles_df(self, symbol: str, interval: str = '1m', lookback: int = 30) -> pd.DataFrame:
+        if self.mode in ['paper', 'live']:
+            # Real-time candles via Hyperliquid
+            raw_data = self.hyperliquid_info.get_candles(symbol=symbol, interval=interval, limit=lookback)
+            df = pd.DataFrame(raw_data, columns=['timestamp', 'open', 'high', 'low', 'close'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            return df.sort_values('timestamp').reset_index(drop=True)
+    
+        elif self.mode == 'backtest':
+            # Use Binance or Coinbase for historical data
+            url = f"https://api.binance.com/api/v3/klines?symbol={symbol}USDT&interval={interval}&limit={lookback}"
+            response = requests.get(url).json()
+            df = pd.DataFrame(response, columns=['timestamp', 'open', 'high', 'low', 'close', ...])
+            df[['open', 'high', 'low', 'close']] = df[[...]].astype(float)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            return df.sort_values('timestamp').reset_index(drop=True)
 
     def get_market_data(self) -> Dict[str, float]:
         """Get current prices for all symbols in config"""
