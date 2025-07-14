@@ -11,7 +11,7 @@ from typing import Dict, List
 
 # Local imports
 from config import BotConfig
-from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy
+from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy, SignalAggregator
 from utils.exchange import ExchangeInterface
 from utils.telegram import TelegramNotifier
 from utils.logger import setup_logger
@@ -49,7 +49,9 @@ class SignalAggregator:
 class TradingEngine:
     def __init__(self):
         self.config = BotConfig
-        self.exchange = ExchangeInterface(mode=BotConfig.MODE)
+        self.private_key = BotConfig.HYPERLIQUID_PRIVATE_KEY
+        self.wallet = validate_private_key(self.private_key)       
+        self.exchange = ExchangeInterface(mode=BotConfig.MODE, wallet=self.wallet)
         self.portfolio = Portfolio()
         self.telegram = TelegramNotifier(BotConfig.TELEGRAM_BOT_TOKEN, BotConfig.TELEGRAM_CHAT_ID)
         self.aggregator = SignalAggregator()
