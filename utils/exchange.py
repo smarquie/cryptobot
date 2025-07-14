@@ -6,20 +6,19 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import time
-from config import BotConfig
+import requests
 
 class ExchangeInterface:
     def __init__(self, mode: str = 'live'):
         self.mode = mode
-        self.symbols = BotConfig.TRADING_SYMBOLS
+        self.symbols = ['BTC', 'ETH', 'SOL']  # Can pull from config
         self.hyperliquid_info = None
         self.hyperliquid_exchange = None
-        self.client = None  # For backtest mode
-
+        self.client = None  # For backtest
         self._initialize_client()
 
     def _initialize_client(self):
-        """Initialize exchange client based on trading mode"""
+        """Initialize exchange client based on mode"""
         if self.mode == 'backtest':
             print("🧪 Backtest mode: Using simulated data")
             return
@@ -27,19 +26,20 @@ class ExchangeInterface:
         elif self.mode in ['paper', 'live']:
             testnet = (self.mode == 'paper')
             base_url = "https://api.hyperliquid.testnet.xyz " if testnet else "https://api.hyperliquid.xyz "
-            print(f"🔌 Connecting to {'Testnet' if testnet else 'Mainnet'}: {base_url}")
-
+            
+            base_url = base_url.strip()  # ← CRITICAL: Remove any accidental whitespace
+            
             try:
                 self.hyperliquid_info = HLInfo(base_url=base_url)
                 self.hyperliquid_exchange = HLExchange(wallet=None, info=self.hyperliquid_info)
-                print("✅ Connected to Hyperliquid")
+                print(f"🔌 Connected to Hyperliquid {'Testnet' if testnet else 'Mainnet'}")
             except Exception as e:
-                raise RuntimeError(f"❌ Failed to connect to Hyperliquid ({'testnet' if testnet else 'mainnet'}): {e}")
+                raise RuntimeError(f"❌ Failed to connect to Hyperliquid: {e}")
         else:
             raise ValueError(f"Invalid mode: {self.mode}. Use 'backtest', 'paper', or 'live'")
 
     def get_market_data(self) -> Dict[str, float]:
-        """Get current mid prices for all symbols"""
+        """Get current prices for all symbols"""
         if self.mode in ['paper', 'live']:
             try:
                 return self.hyperliquid_info.all_mids()
@@ -56,7 +56,7 @@ class ExchangeInterface:
         """Fetch OHLCV data for given symbol and timeframe"""
         if self.mode in ['paper', 'live']:
             try:
-                raw_data = self.hyperliquid_info.get_candles(symbol=symbol, interval=interval, limit=lookback)
+                raw_data = self.hyperliquid_info.get_candles(symbol=symbol, interval=interval, limit=lookback * 60_000)
                 df = pd.DataFrame(raw_data, columns=['timestamp', 'open', 'high', 'low', 'close'])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
@@ -68,7 +68,6 @@ class ExchangeInterface:
         elif self.mode == 'backtest':
             product_id = f"{symbol}-USDT"
             try:
-                # Simulated Coinbase-style logic
                 url = f"https://api.binance.com/api/v3/klines?symbol={product_id}&interval={interval}&limit={lookback}"
                 response = requests.get(url).json()
                 df = pd.DataFrame(response, columns=[
@@ -78,7 +77,7 @@ class ExchangeInterface:
                 ])
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                 df = df[['timestamp', 'open', 'high', 'low', 'close', 'volume']]
-                df = df.astype({'open': float, 'high': float, 'low': float, 'close': float, 'volume': float})
+                df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
                 return df
             except Exception as e:
                 print(f"❌ Binance API error: {e}")
