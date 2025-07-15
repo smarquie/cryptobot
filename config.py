@@ -60,7 +60,7 @@ class BotConfig:
     # Telegram settings
     TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # Replace this
     TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"      # Replace this
-    TELEGRAM_ENABLED = True if TELEGRAM_BOT_TOKEN != "YOUR_TELEGRAM_BOT_TOKEN" and TELEGRAM_CHAT_ID else False
+    TELEGRAM_ENABLED = True #if TELEGRAM_BOT_TOKEN != "YOUR_TELEGRAM_BOT_TOKEN" and TELEGRAM_CHAT_ID else False
 
     # Coinbase credentials
     COINBASE_API_KEY = "your_api_key"
