@@ -49,6 +49,14 @@ class BotConfig:
     TIMEFRAME = '1m'
     CYCLE_INTERVAL = 1  # seconds
 
+    # Strategy weights
+    STRATEGY_WEIGHTS = {
+        "Ultra-Scalp": 0.8,     # Lower weight → less aggressive
+        "Fast-Scalp": 0.9,
+        "Quick-Momentum": 1.0,
+        "TTM-Squeeze": 1.1     # Highest weight → most influence
+    }
+
     # Telegram settings
     TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # Replace this
     TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"      # Replace this
