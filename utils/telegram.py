@@ -4,7 +4,7 @@ import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-class CompleteTelegramNotifier:
+class TelegramNotifier:
     """Telegram bot using centralized parameters"""
 
     def __init__(self):
