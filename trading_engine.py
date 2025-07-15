@@ -12,6 +12,7 @@ from typing import Dict, List
 from utils.wallet import validate_private_key
 from config import BotConfig
 from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy
+from strategies.signal_aggregator import SignalAggregator
 from utils.exchange import ExchangeInterface
 from utils.telegram import TelegramNotifier
 from utils.logger import setup_logger
@@ -51,7 +52,6 @@ class TradingEngine:
         self.config = BotConfig
         self.private_key = BotConfig.HYPERLIQUID_PRIVATE_KEY
         self.wallet = validate_private_key(self.private_key)
-
         self.exchange = ExchangeInterface(mode=BotConfig.MODE, private_key=self.private_key)
         self.portfolio = Portfolio()
         self.aggregator = SignalAggregator()
@@ -59,7 +59,6 @@ class TradingEngine:
             BotConfig.TELEGRAM_BOT_TOKEN,
             BotConfig.TELEGRAM_CHAT_ID
         )        
-        self.aggregator = SignalAggregator()
         self.is_running = False
         self.cycle_count = 0
         self.symbols = BotConfig.TRADING_SYMBOLS
@@ -70,7 +69,7 @@ class TradingEngine:
         while self.is_running:
             await self.trading_cycle()
             await asyncio.sleep(BotConfig.CYCLE_INTERVAL)
-
+    
     async def trading_cycle(self):
         try:
             market_data = self.exchange.get_market_data()
