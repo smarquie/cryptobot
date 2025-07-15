@@ -38,7 +38,7 @@ class ExchangeInterface:
         self.hyperliquid_exchange = None
         self.account_address = None
         self._initialize_client()
-        self.wallet = wallet
+        self.wallet = None
 
     def _initialize_client(self):
         testnet = (self.mode == 'paper')
