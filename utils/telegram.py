@@ -9,9 +9,11 @@ class TelegramNotifier:
 
     def __init__(self):
         from config import BotConfig
-        
-        self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
-        self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
+        # Use passed values if provided, else fallback to config
+        self.bot_token = bot_token.strip() or BotConfig.TELEGRAM_BOT_TOKEN.strip()
+        self.chat_id = chat_id.strip() or BotConfig.TELEGRAM_CHAT_ID.strip()
+        #self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
+        #self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
         self.base_url = f"https://api.telegram.org/bot {self.bot_token}"
         self.enabled = (
             BotConfig.TELEGRAM_ENABLED and 
