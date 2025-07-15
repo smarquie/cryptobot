@@ -78,6 +78,3 @@ class TelegramNotifier:
             f"`{error}`"
         )
         self.send_message(message)
-            f"P&L: ${pnl:.2f}"
-        )
-        self.send_message(message)
