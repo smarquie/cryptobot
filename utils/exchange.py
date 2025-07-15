@@ -3,17 +3,14 @@
 from hyperliquid.info import Info as HLInfo
 from hyperliquid.exchange import Exchange as HLExchange
 from hyperliquid.utils import constants
+from utils.wallet import validate_private_key
 from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import random
 from config import BotConfig
-
 import eth_account
 from eth_account.signers.local import LocalAccount
-from hyperliquid.info import Info as HLInfo
-from hyperliquid.exchange import Exchange as HLExchange
-from config import BotConfig
 
 def validate_private_key(private_key: str) -> Optional[LocalAccount]:
     if not private_key or len(private_key.strip()) == 0:
@@ -32,36 +29,35 @@ def validate_private_key(private_key: str) -> Optional[LocalAccount]:
         print(f"❌ Invalid private key: {e}")
         return None
 
-
 class ExchangeInterface:
-    def __init__(self, mode='live', private_key=None):
+    def __init__(self, mode: str = 'live', private_key: Optional[str] = None):
         self.mode = mode
-        self.private_key = private_key
         self.symbols = BotConfig.TRADING_SYMBOLS
-        self.wallet = wallet
+        self.private_key = private_key
         self.hyperliquid_info = None
         self.hyperliquid_exchange = None
         self.account_address = None
         self._initialize_client()
+        self.wallet = wallet
 
     def _initialize_client(self):
-        """Initialize exchange client based on mode"""
         testnet = (self.mode == 'paper')
         base_url = constants.TESTNET_API_URL if testnet else constants.MAINNET_API_URL
-        
+
         try:
             self.hyperliquid_info = HLInfo(base_url=base_url, skip_ws=True)
-            
+
+            # Only create trading interface if private key is valid
+            self.wallet = validate_private_key(self.private_key)
             if self.wallet:
                 self.hyperliquid_exchange = HLExchange(self.wallet, base_url)
                 self.account_address = self.wallet.address
                 print(f"✅ Trading enabled for {self.account_address}")
             else:
-                print("ℹ️ No private key provided – read-only connection")
-
+                print("ℹ️ Read-only connection – no private key provided")
         except Exception as e:
             raise RuntimeError(f"❌ Failed to connect to Hyperliquid: {e}")
-
+            
     def get_market_data(self) -> Dict[str, float]:
         """Get current mid prices for all symbols"""
         if self.mode in ['paper', 'live']:
