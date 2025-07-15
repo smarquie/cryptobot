@@ -67,3 +67,10 @@ class BotConfig:
     # Minimum data requirement
     MIN_DATA_MINUTES = 20
     DATA_VALIDATION_ENABLED = True
+
+    # Quick-Momentum GCP pattern configuration
+    MOMENTUM_GCP_CONFIG = {
+        'BTC': {'growth_window': 25, 'plateau_window': 20},
+        'ETH': {'growth_window': 15, 'plateau_window': 10},
+        'SOL': {'growth_window': 10, 'plateau_window': 8}
+    }
