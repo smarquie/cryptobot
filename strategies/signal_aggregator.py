@@ -1,5 +1,5 @@
 # strategies/signal_aggregator.py
-import panda as pd
+import pandas as pd
 from .ultra_scalp import UltraScalpStrategy
 from .fast_scalp import FastScalpStrategy
 from .quick_momentum import QuickMomentumStrategy
