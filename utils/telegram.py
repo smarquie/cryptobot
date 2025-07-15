@@ -15,14 +15,13 @@ class TelegramNotifier:
         #self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
         #self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
         self.base_url = f"https://api.telegram.org/bot {self.bot_token}"
-        self.enabled = (
-            BotConfig.TELEGRAM_ENABLED and 
-            self.bot_token and 
-            self.chat_id and 
-            self.bot_token != "YOUR_TELEGRAM_BOT_TOKEN" and 
-            self.chat_id != "YOUR_CHAT_ID"
+         self.enabled = (
+            self.bot_token and self.chat_id and 
+            self.bot_token != "your_telegram_token_here" and 
+            self.chat_id != "your_chat_id"
         )
-
+        self.base_url = f"https://api.telegram.org/bot {self.bot_token}/sendMessage"
+        
         if self.enabled:
             self._test_connection()
         else:
