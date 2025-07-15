@@ -11,7 +11,7 @@ from typing import Dict, List
 # Local imports
 from utils.wallet import validate_private_key
 from config import BotConfig
-from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy, SignalAggregator
+from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy
 from utils.exchange import ExchangeInterface
 from utils.telegram import TelegramNotifier
 from utils.logger import setup_logger
