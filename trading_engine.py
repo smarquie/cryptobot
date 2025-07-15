@@ -56,8 +56,8 @@ class TradingEngine:
         self.portfolio = Portfolio()
         self.aggregator = SignalAggregator()
         self.telegram = TelegramNotifier(
-            BotConfig.TELEGRAM_BOT_TOKEN,
-            BotConfig.TELEGRAM_CHAT_ID
+            bot_token=BotConfig.TELEGRAM_BOT_TOKEN,
+            chat_id=BotConfig.TELEGRAM_CHAT_ID
         )        
         self.is_running = False
         self.cycle_count = 0
