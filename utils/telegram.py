@@ -15,7 +15,7 @@ class TelegramNotifier:
         #self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
         #self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
         self.base_url = f"https://api.telegram.org/bot {self.bot_token}"
-         self.enabled = (
+        self.enabled = (
             self.bot_token and self.chat_id and 
             self.bot_token != "your_telegram_token_here" and 
             self.chat_id != "your_chat_id"
