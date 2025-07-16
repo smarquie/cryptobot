@@ -3,6 +3,7 @@
 import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
+from config import BotConfig  # ← Add this line
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class TelegramNotifier:
             return False
 
     def _send_startup_message(self):
-        """Send a message when the bot starts"""
+        """Send startup message to Telegram"""
         message = (
             f"🚀 *Trading Bot Started*\n"
             f"📅 Time: {datetime.now().strftime('%H:%M:%S')}\n"
@@ -64,9 +65,8 @@ class TelegramNotifier:
         success = self._send_message(message)
         if success:
             logger.info("✅ Telegram startup message sent")
-        else:
-            logger.error("❌ Failed to send startup message")
-
+        return success
+    
     def _send_message(self, message: str, parse_mode: str = "HTML") -> bool:
         """Actually send message to Telegram"""
         if not self.enabled:
