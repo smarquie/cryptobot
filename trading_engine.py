@@ -55,10 +55,10 @@ class TradingEngine:
         self.exchange = ExchangeInterface(mode=BotConfig.MODE, private_key=self.private_key)
         self.portfolio = Portfolio()
         self.aggregator = SignalAggregator()
-        self.telegram = TelegramNotifier(
-            bot_token=BotConfig.TELEGRAM_BOT_TOKEN,
-            chat_id=BotConfig.TELEGRAM_CHAT_ID
-        )        
+        self.telegram = TelegramNotifier()
+        #    bot_token=BotConfig.TELEGRAM_BOT_TOKEN,
+        #    chat_id=BotConfig.TELEGRAM_CHAT_ID
+        #)        
         self.is_running = False
         self.cycle_count = 0
         self.symbols = BotConfig.TRADING_SYMBOLS
