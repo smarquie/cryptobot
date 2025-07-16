@@ -24,7 +24,7 @@ class TelegramNotifier:
             self.chat_id != "your_chat_id"
         )
 
-        self.base_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        self.base_url = f"https://api.telegram.org/bot {self.bot_token}/sendMessage"
 
         if self.enabled:
             self._test_connection()
