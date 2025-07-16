@@ -77,11 +77,35 @@ class ExchangeInterface:
         """Fetch OHLCV data from Hyperliquid or simulate if unavailable"""
         if self.mode in ['paper', 'live']:
             try:
-                raw_data = self.hyperliquid_info.candles_snapshot(coin=symbol, interval=interval)
-                df = pd.DataFrame(raw_data)
-                df['timestamp'] = pd.to_datetime(df['T'], unit='ms')
-                df[['open', 'high', 'low', 'close']] = df[['o', 'h', 'l', 'c']].astype(float)
-                return df[['timestamp', 'open', 'high', 'low', 'close']].sort_values('timestamp').reset_index(drop=True)
+                # Map to Hyperliquid interval format
+                interval_map = {
+                    '1m': '1m',
+                    '5m': '5m',
+                    '15m': '15m',
+                    '1h': '1h',
+                    '4h': '4h',
+                    '1d': '1d'
+                }
+                hl_interval = interval_map.get(interval, '1m')
+    
+                # Fetch candles using correct SDK syntax
+                candles = self.hyperliquid_info.candles_snapshot(symbol, hl_interval)
+                df = pd.DataFrame(candles)
+    
+                # Rename columns
+                df.rename(columns={
+                    'T': 'timestamp',
+                    'o': 'open',
+                    'h': 'high',
+                    'l': 'low',
+                    'c': 'close',
+                    'v': 'volume'
+                }, inplace=True)
+    
+                # Convert timestamp to datetime
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
+                return df.sort_values('timestamp').reset_index(drop=True)
             except Exception as e:
                 print(f"❌ Error fetching real candles: {e}")
                 return self._generate_fallback_candles(symbol, lookback)
