@@ -3,25 +3,29 @@
 import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TelegramNotifier:
-    """Telegram bot using centralized parameters"""
+    """Telegram bot using centralized parameters from config"""
 
     def __init__(self):
         from config import BotConfig
-        # Use passed values if provided, else fallback to config
-        self.bot_token = bot_token.strip() or BotConfig.TELEGRAM_BOT_TOKEN.strip()
-        self.chat_id = chat_id.strip() or BotConfig.TELEGRAM_CHAT_ID.strip()
-        #self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
-        #self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
-        self.base_url = f"https://api.telegram.org/bot {self.bot_token}"
+        
+        # Load token/chat_id directly from config
+        self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
+        self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
+        
+        # Validate credentials
         self.enabled = (
             self.bot_token and self.chat_id and 
             self.bot_token != "your_telegram_token_here" and 
             self.chat_id != "your_chat_id"
         )
+
         self.base_url = f"https://api.telegram.org/bot {self.bot_token}/sendMessage"
-        
+
         if self.enabled:
             self._test_connection()
         else:
@@ -33,21 +37,21 @@ class TelegramNotifier:
             response = requests.get(f"{self.base_url}/getMe", timeout=5)
             if response.status_code == 200:
                 bot_info = response.json().get('result', {})
-                print(f"✅ Telegram bot connected: {bot_info.get('first_name', 'Unknown')}")
+                logger.info(f"✅ Telegram bot connected: {bot_info.get('first_name', 'Unknown')}")
                 return True
             else:
-                print(f"❌ Telegram bot connection failed: {response.status_code} - {response.text}")
+                logger.error(f"❌ Telegram bot failed: {response.text}")
                 self.enabled = False
                 return False
         except Exception as e:
-            print(f"❌ Telegram connection error: {e}")
+            logger.error(f"❌ Telegram connection error: {e}")
             self.enabled = False
             return False
 
     def _send_message(self, message: str, parse_mode: str = "HTML") -> bool:
         """Actually send message to Telegram"""
         if not self.enabled:
-            print(f"[Telegram] Disabled: {message[:30]}...")
+            logger.warning(f"[Telegram] Disabled: {message[:30]}...")
             return False
 
         try:
@@ -57,16 +61,16 @@ class TelegramNotifier:
                 'parse_mode': parse_mode
             }
 
-            response = requests.post(f"{self.base_url}/sendMessage", json=payload, timeout=10)
+            response = requests.post(self.base_url, json=payload, timeout=10)
 
             if response.status_code == 200:
-                print(f"[Telegram] Sent: {message[:50]}...")
+                logger.info(f"[Telegram] Sent: {message[:50]}...")
                 return True
             else:
-                print(f"[Telegram] Send failed: {response.status_code} | {response.text}")
+                logger.error(f"[Telegram] Send failed: {response.status_code} | {response.text}")
                 return False
         except Exception as e:
-            print(f"[Telegram] Network error: {e}")
+            logger.error(f"[Telegram] Network error: {e}")
             return False
 
     def send_position_opened(self, symbol: str, side: str, size: float, entry_price: float, strategy: str, reason: str, target_hold: str, portfolio_summary: Dict) -> bool:
