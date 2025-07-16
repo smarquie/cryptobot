@@ -26,7 +26,7 @@ class TelegramNotifier:
             not self.chat_id.startswith("YOUR_")
         )
 
-        self.base_url = f"https://api.telegram.org/bot {self.bot_token}/sendMessage"
+        self.base_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
         if self.enabled:
             success = self._test_connection()
@@ -39,7 +39,7 @@ class TelegramNotifier:
 
     def _test_connection(self):
         """Test Telegram bot connection"""
-        test_url = f"https://api.telegram.org/bot {self.bot_token}/getMe"
+        test_url = f"https://api.telegram.org/bot{self.bot_token}/getMe"
         try:
             response = requests.get(test_url, timeout=5)
             if response.status_code == 200:
