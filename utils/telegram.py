@@ -14,8 +14,8 @@ class TelegramNotifier:
         from config import BotConfig
         
         # Load token/chat_id directly from config
-        self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
-        self.chat_id = BotConfig.TELEGRAM_CHAT_ID.strip()
+        self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN#.strip()
+        self.chat_id = BotConfig.TELEGRAM_CHAT_ID#.strip()
         
         # Validate credentials
         self.enabled = (
