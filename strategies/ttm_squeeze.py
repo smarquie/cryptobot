@@ -10,115 +10,117 @@ import numpy as np
 from typing import Dict
 from datetime import datetime
 
+#!/usr/bin/env python3
+"""
+TTM-SQUEEZE STRATEGY MODULE
+Replacement for GitHub repository - FIXED VERSION
+Based on working code with permissive parameters
+"""
+
+import pandas as pd
+import numpy as np
+from typing import Dict
+from datetime import datetime
+
 class TTMSqueezeStrategy:
-    """FIXED TTM Squeeze + CVD strategy - MUCH MORE PERMISSIVE"""
+    """FIXED TTM-Squeeze strategy - MUCH MORE PERMISSIVE"""
     
     def __init__(self):
         self.name = "TTM-Squeeze"
-        self.squeeze_history = {}  # Track squeeze periods per symbol
         
     def analyze_and_signal(self, df: pd.DataFrame, symbol: str) -> Dict:
         try:
-            if df.empty or len(df) < 20:  # FIXED: Lower minimum
-                return self._empty_signal('Insufficient data for TTM analysis')
+            if df.empty or len(df) < 12:  # FIXED: Much lower minimum
+                return self._empty_signal('Insufficient data')
 
+            close = df['close']
             high = df['high']
             low = df['low']
-            close = df['close']
             volume = df['volume']
             
-            # Calculate Bollinger Bands
-            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(close, 20, 2.0)
+            # Calculate indicators using centralized parameters
+            rsi = self._calculate_rsi(close, 14)  # RSI period
+            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(close, 20, 2)
+            keltner_upper, keltner_middle, keltner_lower = self._calculate_keltner_channels(high, low, close, 20, 1.5)
             
-            # Calculate Keltner Channels
-            kc_upper, kc_middle, kc_lower = self._calculate_keltner_channels(high, low, close, 20, 1.5)
-            
-            # Calculate Donchian Midline for momentum
-            donchian_midline = self._calculate_donchian_midline(high, low, 20)
-            
-            # Calculate CVD
-            cvd = self._calculate_cvd(volume, close)
-            
-            # Current values
             current_price = float(close.iloc[-1])
-            current_bb_upper = float(bb_upper.iloc[-1])
-            current_bb_lower = float(bb_lower.iloc[-1])
-            current_kc_upper = float(kc_upper.iloc[-1])
-            current_kc_lower = float(kc_lower.iloc[-1])
-            current_donchian = float(donchian_midline.iloc[-1])
-            current_sma = float(bb_middle.iloc[-1])
-            current_cvd = float(cvd.iloc[-1])
+            current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
+            current_bb_upper = float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else current_price * 1.02
+            current_bb_lower = float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else current_price * 0.98
+            current_keltner_upper = float(keltner_upper.iloc[-1]) if not pd.isna(keltner_upper.iloc[-1]) else current_price * 1.02
+            current_keltner_lower = float(keltner_lower.iloc[-1]) if not pd.isna(keltner_lower.iloc[-1]) else current_price * 0.98
             
-            # Check squeeze condition
-            squeeze_on = (current_bb_upper < current_kc_upper and current_bb_lower > current_kc_lower)
+            # Squeeze detection
+            bb_width = current_bb_upper - current_bb_lower
+            keltner_width = current_keltner_upper - current_keltner_lower
+            squeeze_on = bb_width < keltner_width
             
-            # Calculate momentum
-            momentum_normalized = (current_price - current_donchian) / current_donchian if current_donchian != 0 else 0
+            # Momentum indicators
+            rsi_slope = 0.0
+            if len(rsi) >= 3:
+                rsi_prev = float(rsi.iloc[-3]) if not pd.isna(rsi.iloc[-3]) else current_rsi
+                rsi_slope = current_rsi - rsi_prev
             
-            # Calculate CVD momentum
-            cvd_momentum = 0.0
-            if len(cvd) >= 3:
-                cvd_prev = float(cvd.iloc[-3]) if not pd.isna(cvd.iloc[-3]) else current_cvd
-                cvd_momentum = current_cvd - cvd_prev
+            # Price momentum
+            price_change_5m = ((current_price / close.iloc[-6]) - 1) * 100 if len(close) > 5 else 0
             
-            # Track squeeze periods
-            if symbol not in self.squeeze_history:
-                self.squeeze_history[symbol] = 0
+            # Volume analysis
+            volume_avg = volume.rolling(10).mean().iloc[-1] if len(volume) >= 10 else volume.iloc[-1]
+            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * 1.01  # FIXED: Much lower threshold
             
-            if squeeze_on:
-                self.squeeze_history[symbol] += 1
-            else:
-                self.squeeze_history[symbol] = 0
-            
-            recent_squeeze_count = self.squeeze_history[symbol]
+            # Position relative to bands
+            bb_position = (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if (current_bb_upper - current_bb_lower) > 0 else 0.5
+            keltner_position = (current_price - current_keltner_lower) / (current_keltner_upper - current_keltner_lower) if (current_keltner_upper - current_keltner_lower) > 0 else 0.5
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (not squeeze_on and  # FIXED: Squeeze must be OFF
-                recent_squeeze_count >= 2 and  # FIXED: Lower from 3 to 2
-                abs(momentum_normalized) > 0.5 and  # FIXED: Keep this threshold
-                # FIXED: CVD is now optional bonus, not requirement
-                abs(cvd_momentum) > 0.1):  # FIXED: Much lower threshold
+            if (current_rsi < 55 and  # FIXED: 55 instead of 45
+                # FIXED: Much more permissive squeeze requirements
+                (squeeze_on or bb_position < 0.7) and  # Either in squeeze OR not at upper BB
+                # FIXED: Much more permissive momentum requirements
+                (rsi_slope > -2.0 or price_change_5m > -1.5)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.6  # FIXED: Higher base confidence
-                squeeze_bonus = min(0.2, recent_squeeze_count * 0.1)  # FIXED: Bonus for squeeze duration
-                momentum_bonus = min(0.2, abs(momentum_normalized) * 0.4)
-                cvd_bonus = min(0.2, abs(cvd_momentum) * 2.0)  # FIXED: CVD is bonus
+                base_confidence = 0.4  # FIXED: Higher base confidence
+                rsi_distance = 55 - current_rsi  # FIXED: Use 55 as threshold
+                squeeze_bonus = 0.2 if squeeze_on else 0.1
+                momentum_bonus = min(0.2, max(0, rsi_slope / 15 + price_change_5m / 100))
+                volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + squeeze_bonus + momentum_bonus + cvd_bonus)
-                reason = f'FIXED TTM BUY: Squeeze={recent_squeeze_count}p, momentum={momentum_normalized:.3f}, CVD={cvd_momentum:.3f}'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + squeeze_bonus + momentum_bonus + volume_bonus)
+                reason = f'FIXED TTM-Squeeze BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), squeeze={squeeze_on}, momentum={price_change_5m:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (not squeeze_on and  # FIXED: Squeeze must be OFF
-                  recent_squeeze_count >= 2 and  # FIXED: Lower from 3 to 2
-                  abs(momentum_normalized) > 0.5 and  # FIXED: Keep this threshold
-                  # FIXED: CVD is now optional bonus, not requirement
-                  abs(cvd_momentum) > 0.1):  # FIXED: Much lower threshold
+            elif (current_rsi > 45 and  # FIXED: 45 instead of 55
+                  # FIXED: Much more permissive squeeze requirements
+                  (squeeze_on or bb_position > 0.3) and  # Either in squeeze OR not at lower BB
+                  # FIXED: Much more permissive momentum requirements
+                  (rsi_slope < 2.0 or price_change_5m < 1.5)):  # Either RSI not rising fast OR price not rising fast
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.6  # FIXED: Higher base confidence
-                squeeze_bonus = min(0.2, recent_squeeze_count * 0.1)  # FIXED: Bonus for squeeze duration
-                momentum_bonus = min(0.2, abs(momentum_normalized) * 0.4)
-                cvd_bonus = min(0.2, abs(cvd_momentum) * 2.0)  # FIXED: CVD is bonus
+                base_confidence = 0.4  # FIXED: Higher base confidence
+                rsi_distance = current_rsi - 45  # FIXED: Use 45 as threshold
+                squeeze_bonus = 0.2 if squeeze_on else 0.1
+                momentum_bonus = min(0.2, max(0, abs(rsi_slope) / 15 + abs(price_change_5m) / 100))
+                volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + squeeze_bonus + momentum_bonus + cvd_bonus)
-                reason = f'FIXED TTM SELL: Squeeze={recent_squeeze_count}p, momentum={momentum_normalized:.3f}, CVD={cvd_momentum:.3f}'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + squeeze_bonus + momentum_bonus + volume_bonus)
+                reason = f'FIXED TTM-Squeeze SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), squeeze={squeeze_on}, momentum={price_change_5m:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.002)  # 0.20% stop loss
-                take_profit = current_price * (1 + 0.003)  # 0.30% profit target
+                stop_loss = current_price * (1 - 0.0050)  # 0.50% stop loss
+                take_profit = current_price * (1 + 0.0100)  # 1.00% profit target
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.002)  # 0.20% stop loss
-                take_profit = current_price * (1 - 0.003)  # 0.30% profit target
+                stop_loss = current_price * (1 + 0.0050)  # 0.50% stop loss
+                take_profit = current_price * (1 - 0.0100)  # 1.00% profit target
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -131,12 +133,15 @@ class TTMSqueezeStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': 1200,  # 20 minutes
-                'target_hold': '20 minutes',
+                'max_hold_time': 1800,  # 30 minutes
+                'target_hold': '30 minutes',
+                'rsi': current_rsi,
+                'rsi_slope': rsi_slope,
+                'price_change_5m': price_change_5m,
                 'squeeze_on': squeeze_on,
-                'recent_squeeze_count': recent_squeeze_count,
-                'momentum_normalized': momentum_normalized,
-                'cvd_momentum': cvd_momentum
+                'bb_position': bb_position,
+                'keltner_position': keltner_position,
+                'volume_surge': volume_surge
             }
 
         except Exception as e:
@@ -151,61 +156,67 @@ class TTMSqueezeStrategy:
             'stop_loss': 0,
             'take_profit': 0,
             'reason': reason,
-            'max_hold_time': 1200,
-            'target_hold': '20 minutes'
+            'max_hold_time': 1800,
+            'target_hold': '30 minutes'
         }
     
-    def _calculate_bollinger_bands(self, data: pd.Series, period: int, stddev: float) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def _calculate_rsi(self, data: pd.Series, period: int) -> pd.Series:
+        """Calculate RSI"""
+        try:
+            delta = data.diff()
+            gains = delta.where(delta > 0, 0)
+            losses = -delta.where(delta < 0, 0)
+            
+            avg_gains = gains.ewm(span=period, adjust=False).mean()
+            avg_losses = losses.ewm(span=period, adjust=False).mean()
+            
+            rs = avg_gains / avg_losses
+            rsi = 100 - (100 / (1 + rs))
+            
+            return rsi.fillna(50)
+        except Exception as e:
+            return pd.Series([50] * len(data), index=data.index)
+    
+    def _calculate_bollinger_bands(self, data: pd.Series, period: int, std_dev: float):
         """Calculate Bollinger Bands"""
         try:
-            sma = data.rolling(window=period, min_periods=1).mean()
-            std = data.rolling(window=period, min_periods=1).std()
-            upper = sma + (std * stddev)
-            lower = sma - (std * stddev)
-            return upper, sma, lower
+            sma = data.rolling(window=period).mean()
+            std = data.rolling(window=period).std()
+            
+            upper_band = sma + (std * std_dev)
+            lower_band = sma - (std * std_dev)
+            
+            return upper_band.fillna(data), sma.fillna(data), lower_band.fillna(data)
         except Exception as e:
-            return data, data, data
+            return data * 1.02, data, data * 0.98
     
-    def _calculate_keltner_channels(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int, multiplier: float) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    def _calculate_keltner_channels(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int, multiplier: float):
         """Calculate Keltner Channels"""
         try:
             typical_price = (high + low + close) / 3
             atr = self._calculate_atr(high, low, close, period)
-            sma = typical_price.rolling(window=period, min_periods=1).mean()
-            upper = sma + (atr * multiplier)
-            lower = sma - (atr * multiplier)
-            return upper, sma, lower
+            
+            middle = typical_price.rolling(window=period).mean()
+            upper = middle + (atr * multiplier)
+            lower = middle - (atr * multiplier)
+            
+            return upper.fillna(close), middle.fillna(close), lower.fillna(close)
         except Exception as e:
-            return close, close, close
+            return close * 1.02, close, close * 0.98
     
     def _calculate_atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.Series:
         """Calculate Average True Range"""
         try:
-            tr1 = high - low
-            tr2 = abs(high - close.shift())
-            tr3 = abs(low - close.shift())
-            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-            atr = tr.rolling(window=period, min_periods=1).mean()
-            return atr
+            high_low = high - low
+            high_close = np.abs(high - close.shift())
+            low_close = np.abs(low - close.shift())
+            
+            true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+            atr = true_range.rolling(window=period).mean()
+            
+            return atr.fillna(high_low.mean())
         except Exception as e:
-            return pd.Series([0] * len(high), index=high.index)
-    
-    def _calculate_donchian_midline(self, high: pd.Series, low: pd.Series, period: int) -> pd.Series:
-        """Calculate Donchian Midline"""
-        try:
-            highest_high = high.rolling(window=period, min_periods=1).max()
-            lowest_low = low.rolling(window=period, min_periods=1).min()
-            midline = (highest_high + lowest_low) / 2
-            return midline
-        except Exception as e:
-            return pd.Series([0] * len(high), index=high.index)
-    
-    def _calculate_cvd(self, volume: pd.Series, close: pd.Series) -> pd.Series:
-        """Calculate Cumulative Volume Delta"""
-        try:
-            price_change = close.diff()
-            volume_delta = volume * np.where(price_change > 0, 1, np.where(price_change < 0, -1, 0))
-            cvd = volume_delta.cumsum()
-            return cvd
-        except Exception as e:
-            return pd.Series([0] * len(volume), index=volume.index)
+            return pd.Series([0.01] * len(high), index=high.index)
+
+# Export the strategy class
+__all__ = ['TTMSqueezeStrategy']
