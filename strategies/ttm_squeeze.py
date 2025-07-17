@@ -10,7 +10,7 @@ import numpy as np
 from typing import Dict
 from datetime import datetime
 
-class CompleteTTMSqueezeStrategy:
+class TTMSqueezeStrategy:
     """FIXED TTM Squeeze + CVD strategy - MUCH MORE PERMISSIVE"""
     
     def __init__(self):
