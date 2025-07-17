@@ -52,7 +52,7 @@ class BotConfig:
     
     # Confidence calculation - FIXED: Much more permissive
     ULTRA_SCALP_BASE_CONFIDENCE = 0.5        # FIXED: Increased from 0.4
-    ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 20   # RSI distance factor for confidence
+    ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 20   # RSI distance f
     ULTRA_SCALP_MIN_CONFIDENCE = 0.2         # FIXED: Much lower from 0.4
     
     # Technical indicator periods
