@@ -1,3 +1,15 @@
+"""
+ULTRA-SCALP STRATEGY MODULE
+Replacement for GitHub repository - FIXED VERSION
+Based on working code with permissive parameters
+"""
+
+import pandas as pd
+import numpy as np
+from typing import Dict
+from datetime import datetime
+
+
 class CompleteUltraScalpStrategy:
     """FIXED Ultra-scalp strategy - MUCH MORE PERMISSIVE"""
     
