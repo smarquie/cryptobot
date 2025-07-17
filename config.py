@@ -183,5 +183,13 @@ class BotConfig:
     ENABLE_PERFORMANCE_MONITORING = True
     LOG_PERFORMANCE_METRICS = True
 
+    # Strategy weights
+    STRATEGY_WEIGHTS = {
+        "Ultra-Scalp": 0.8,     # Lower weight → less aggressive
+        "Fast-Scalp": 0.9,
+        "Quick-Momentum": 1.0,
+        "TTM-Squeeze": 1.1     # Highest weight → most influence
+    }
+
 # Export the config class
 __all__ = ['BotConfig']
