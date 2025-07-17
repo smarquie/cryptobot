@@ -1,16 +1,4 @@
-#!/usr/bin/env python3
-"""
-FAST-SCALP STRATEGY MODULE
-Replacement for GitHub repository - FIXED VERSION
-Based on working code with permissive parameters
-"""
-
-import pandas as pd
-import numpy as np
-from typing import Dict
-from datetime import datetime
-
-class CompleteFastScalpStrategy:
+class FastScalpStrategy:
     """FIXED Fast-scalp strategy - MUCH MORE PERMISSIVE"""
     
     def __init__(self):
@@ -46,54 +34,48 @@ class CompleteFastScalpStrategy:
             
             # MACD momentum confirmation
             macd_momentum = 0.0
-            if len(histogram) >= 2:  # FIXED: Only need 2 periods
-                prev_histogram = float(histogram.iloc[-2]) if not pd.isna(histogram.iloc[-2]) else 0.0
-                current_histogram = float(histogram.iloc[-1]) if not pd.isna(histogram.iloc[-1]) else 0.0
-                macd_momentum = current_histogram - prev_histogram
+            if len(macd_line) >= 3:
+                macd_prev = float(macd_line.iloc[-3]) if not pd.isna(macd_line.iloc[-3]) else current_macd
+                macd_momentum = current_macd - macd_prev
             
-            # Price Action confirmation
-            price_change_1m = ((current_price / close.iloc[-2]) - 1) * 100 if len(close) > 1 else 0
+            # Volume confirmation (FIXED: Made optional)
+            volume_confirmed = current_volume > avg_volume * 1.1
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
-            # Volume confirmation - FIXED: More permissive
-            volume_confirmed = current_volume > avg_volume * 1.1
-            
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
             if (current_rsi < 40 and  # FIXED: 40 instead of 30
-                # FIXED: Either MACD bullish OR just not strongly bearish
-                (current_macd > current_signal or macd_momentum > -0.1)):
+                # FIXED: Much more permissive MACD conditions
+                (current_macd > current_signal or macd_momentum > -0.1)):  # Either MACD bullish OR not falling fast
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
                 base_confidence = 0.6  # FIXED: Higher base confidence
-                rsi_bonus = min(0.15, (40 - current_rsi) / 30)  # FIXED: Use 40 as threshold
-                macd_bonus = min(0.1, max(0, macd_momentum * 50))
-                momentum_bonus = min(0.1, max(0, rsi_slope / 10 + price_change_1m / 100))
-                volume_bonus = 0.2 if volume_confirmed else 0.1  # FIXED: Give some bonus even without volume
+                rsi_distance = 40 - current_rsi  # FIXED: Use 40 as threshold
+                macd_bonus = min(0.2, max(0, (current_macd - current_signal) / 0.01))
+                volume_bonus = 0.2 if volume_confirmed else 0.0  # FIXED: Volume is bonus, not requirement
                 
-                confidence = min(0.95, base_confidence + rsi_bonus + macd_bonus + momentum_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), MACD momentum'
+                confidence = min(0.9, base_confidence + (rsi_distance / 20) + macd_bonus + volume_bonus)
+                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}, MACD={current_macd:.4f}, Signal={current_signal:.4f}'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
             elif (current_rsi > 60 and  # FIXED: 60 instead of 70
-                  # FIXED: Either MACD bearish OR just not strongly bullish
-                  (current_macd < current_signal or macd_momentum < 0.1)):
+                  # FIXED: Much more permissive MACD conditions
+                  (current_macd < current_signal or macd_momentum < 0.1)):  # Either MACD bearish OR not rising fast
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
                 base_confidence = 0.6  # FIXED: Higher base confidence
-                rsi_bonus = min(0.15, (current_rsi - 60) / 30)  # FIXED: Use 60 as threshold
-                macd_bonus = min(0.1, max(0, abs(macd_momentum) * 50))
-                momentum_bonus = min(0.1, max(0, abs(rsi_slope) / 10 + abs(price_change_1m) / 100))
-                volume_bonus = 0.2 if volume_confirmed else 0.1  # FIXED: Give some bonus even without volume
+                rsi_distance = current_rsi - 60  # FIXED: Use 60 as threshold
+                macd_bonus = min(0.2, max(0, (current_signal - current_macd) / 0.01))
+                volume_bonus = 0.2 if volume_confirmed else 0.0  # FIXED: Volume is bonus, not requirement
                 
-                confidence = min(0.95, base_confidence + rsi_bonus + macd_bonus + momentum_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), MACD momentum'
+                confidence = min(0.9, base_confidence + (rsi_distance / 20) + macd_bonus + volume_bonus)
+                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}, MACD={current_macd:.4f}, Signal={current_signal:.4f}'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
@@ -117,10 +99,9 @@ class CompleteFastScalpStrategy:
                 'max_hold_time': 900,  # 15 minutes
                 'target_hold': '15 minutes',
                 'rsi': current_rsi,
-                'rsi_slope': rsi_slope,
                 'macd': current_macd,
-                'macd_momentum': macd_momentum,
-                'volume_ratio': current_volume / avg_volume if avg_volume > 0 else 1.0
+                'signal': current_signal,
+                'volume_confirmed': volume_confirmed
             }
 
         except Exception as e:
@@ -143,10 +124,6 @@ class CompleteFastScalpStrategy:
         """Calculate Simple Moving Average"""
         return data.rolling(window=period, min_periods=1).mean()
     
-    def _fast_ema(self, data: pd.Series, period: int) -> pd.Series:
-        """Calculate Exponential Moving Average"""
-        return data.ewm(span=period, adjust=False).mean()
-    
     def _calculate_rsi(self, data: pd.Series, period: int) -> pd.Series:
         """Calculate RSI"""
         try:
@@ -164,18 +141,14 @@ class CompleteFastScalpStrategy:
         except Exception as e:
             return pd.Series([50] * len(data), index=data.index)
     
-    def _calculate_macd(self, data: pd.Series, fast: int, slow: int, signal: int):
+    def _calculate_macd(self, data: pd.Series, fast: int, slow: int, signal: int) -> Tuple[pd.Series, pd.Series, pd.Series]:
         """Calculate MACD"""
         try:
-            ema_fast = self._fast_ema(data, fast)
-            ema_slow = self._fast_ema(data, slow)
+            ema_fast = data.ewm(span=fast, adjust=False).mean()
+            ema_slow = data.ewm(span=slow, adjust=False).mean()
             macd_line = ema_fast - ema_slow
-            signal_line = self._fast_ema(macd_line, signal)
+            signal_line = macd_line.ewm(span=signal, adjust=False).mean()
             histogram = macd_line - signal_line
-            
             return macd_line, signal_line, histogram
         except Exception as e:
             return pd.Series([0] * len(data)), pd.Series([0] * len(data)), pd.Series([0] * len(data))
-
-# Export the strategy class
-__all__ = ['CompleteFastScalpStrategy']
