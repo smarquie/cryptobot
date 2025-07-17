@@ -10,7 +10,7 @@ import numpy as np
 from typing import Dict
 from datetime import datetime
 
-class CompleteQuickMomentumStrategy:
+class QuickMomentumStrategy:
     """FIXED Quick-momentum strategy with GCP detection - MUCH MORE PERMISSIVE"""
     
     def __init__(self):
