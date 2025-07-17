@@ -2,18 +2,6 @@
 """
 QUICK-MOMENTUM STRATEGY MODULE
 Replacement for GitHub repository - FIXED VERSION
-Based on working code with GCP pattern detection
-"""
-
-import pandas as pd
-import numpy as np
-from typing import Dict
-from datetime import datetime
-
-#!/usr/bin/env python3
-"""
-QUICK-MOMENTUM STRATEGY MODULE
-Replacement for GitHub repository - FIXED VERSION
 Based on working code with permissive parameters
 Includes GCP (Golden Cross Pattern) detection
 """
