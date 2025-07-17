@@ -10,7 +10,7 @@ from typing import Dict
 from datetime import datetime
 
 
-class CompleteUltraScalpStrategy:
+class UltraScalpStrategy:
     """FIXED Ultra-scalp strategy - MUCH MORE PERMISSIVE"""
     
     def __init__(self):
