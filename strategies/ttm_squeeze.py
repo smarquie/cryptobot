@@ -7,8 +7,10 @@ Based on working code with permissive parameters
 
 import pandas as pd
 import numpy as np
-from typing import Dict
-from datetime import datetime
+from typing import Dict, Any
+from .base import Strategy
+from config import BotConfig
+from utils.ta import TechnicalAnalysis
 
 class TTMSqueezeStrategy:
     """FIXED TTM-Squeeze strategy - MUCH MORE PERMISSIVE"""
