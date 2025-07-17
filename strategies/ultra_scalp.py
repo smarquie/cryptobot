@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-"""
-ULTRA-SCALP STRATEGY MODULE
-Replacement for GitHub repository - FIXED VERSION
-Based on working code with permissive parameters
-"""
-
-import pandas as pd
-import numpy as np
-from typing import Dict
-from datetime import datetime
-
 class CompleteUltraScalpStrategy:
     """FIXED Ultra-scalp strategy - MUCH MORE PERMISSIVE"""
     
@@ -146,6 +134,3 @@ class CompleteUltraScalpStrategy:
             return rsi.fillna(50)
         except Exception as e:
             return pd.Series([50] * len(data), index=data.index)
-
-# Export the strategy class
-__all__ = ['CompleteUltraScalpStrategy']
