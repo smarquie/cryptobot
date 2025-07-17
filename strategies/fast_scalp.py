@@ -10,6 +10,18 @@ import numpy as np
 from typing import Dict
 from datetime import datetime
 
+#!/usr/bin/env python3
+"""
+FAST-SCALP STRATEGY MODULE
+Replacement for GitHub repository - FIXED VERSION
+Based on working code with permissive parameters
+"""
+
+import pandas as pd
+import numpy as np
+from typing import Dict
+from datetime import datetime
+
 class FastScalpStrategy:
     """FIXED Fast-scalp strategy - MUCH MORE PERMISSIVE"""
     
@@ -18,7 +30,7 @@ class FastScalpStrategy:
         
     def analyze_and_signal(self, df: pd.DataFrame, symbol: str) -> Dict:
         try:
-            if df.empty or len(df) < 10:  # FIXED: Lower minimum
+            if df.empty or len(df) < 8:  # FIXED: Much lower minimum
                 return self._empty_signal('Insufficient data')
 
             close = df['close']
@@ -27,75 +39,76 @@ class FastScalpStrategy:
             volume = df['volume']
             
             # Calculate indicators using centralized parameters
-            rsi = self._calculate_rsi(close, 7)  # RSI period
-            macd_line, signal_line, histogram = self._calculate_macd(close, 5, 10, 4)
-            volume_sma = self._fast_sma(volume, 10)
+            rsi = self._calculate_rsi(close, 9)  # RSI period
+            ema_fast = self._calculate_ema(close, 8)  # Fast EMA
+            ema_slow = self._calculate_ema(close, 21)  # Slow EMA
             
             current_price = float(close.iloc[-1])
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
-            current_macd = float(macd_line.iloc[-1]) if not pd.isna(macd_line.iloc[-1]) else 0.0
-            current_signal = float(signal_line.iloc[-1]) if not pd.isna(signal_line.iloc[-1]) else 0.0
-            current_volume = float(volume.iloc[-1])
-            avg_volume = float(volume_sma.iloc[-1]) if not pd.isna(volume_sma.iloc[-1]) else current_volume
+            current_ema_fast = float(ema_fast.iloc[-1]) if not pd.isna(ema_fast.iloc[-1]) else current_price
+            current_ema_slow = float(ema_slow.iloc[-1]) if not pd.isna(ema_slow.iloc[-1]) else current_price
+            
+            # EMA crossover
+            ema_crossover = current_ema_fast > current_ema_slow
             
             # RSI Slope calculation
             rsi_slope = 0.0
-            if len(rsi) >= 3:  # FIXED: Only need 3 periods
+            if len(rsi) >= 3:
                 rsi_prev = float(rsi.iloc[-3]) if not pd.isna(rsi.iloc[-3]) else current_rsi
                 rsi_slope = current_rsi - rsi_prev
             
-            # MACD momentum confirmation
-            macd_momentum = 0.0
-            if len(macd_line) >= 3:
-                macd_prev = float(macd_line.iloc[-3]) if not pd.isna(macd_line.iloc[-3]) else current_macd
-                macd_momentum = current_macd - macd_prev
+            # Price momentum
+            price_change_2m = ((current_price / close.iloc[-3]) - 1) * 100 if len(close) > 2 else 0
             
-            # Volume confirmation (FIXED: Made optional)
-            volume_confirmed = current_volume > avg_volume * 1.1
+            # Volume analysis
+            volume_avg = volume.rolling(5).mean().iloc[-1] if len(volume) >= 5 else volume.iloc[-1]
+            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * 1.05  # FIXED: Lower threshold
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 40 and  # FIXED: 40 instead of 30
-                # FIXED: Much more permissive MACD conditions
-                (current_macd > current_signal or macd_momentum > -0.1)):  # Either MACD bullish OR not falling fast
+            if (current_rsi < 45 and  # FIXED: 45 instead of 35
+                ema_crossover and  # EMA crossover required
+                # FIXED: Much more permissive momentum requirements
+                (rsi_slope > -2.0 or price_change_2m > -1.0)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.6  # FIXED: Higher base confidence
-                rsi_distance = 40 - current_rsi  # FIXED: Use 40 as threshold
-                macd_bonus = min(0.2, max(0, (current_macd - current_signal) / 0.01))
-                volume_bonus = 0.2 if volume_confirmed else 0.0  # FIXED: Volume is bonus, not requirement
+                base_confidence = 0.4  # FIXED: Higher base confidence
+                rsi_distance = 45 - current_rsi  # FIXED: Use 45 as threshold
+                momentum_bonus = min(0.3, max(0, rsi_slope / 15 + price_change_2m / 50))
+                volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 20) + macd_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}, MACD={current_macd:.4f}, Signal={current_signal:.4f}'
+                confidence = min(0.9, base_confidence + (rsi_distance / 25) + momentum_bonus + volume_bonus)
+                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), EMA crossover, momentum={price_change_2m:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (current_rsi > 60 and  # FIXED: 60 instead of 70
-                  # FIXED: Much more permissive MACD conditions
-                  (current_macd < current_signal or macd_momentum < 0.1)):  # Either MACD bearish OR not rising fast
+            elif (current_rsi > 55 and  # FIXED: 55 instead of 65
+                  not ema_crossover and  # EMA crossover required
+                  # FIXED: Much more permissive momentum requirements
+                  (rsi_slope < 2.0 or price_change_2m < 1.0)):  # Either RSI not rising fast OR price not rising fast
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.6  # FIXED: Higher base confidence
-                rsi_distance = current_rsi - 60  # FIXED: Use 60 as threshold
-                macd_bonus = min(0.2, max(0, (current_signal - current_macd) / 0.01))
-                volume_bonus = 0.2 if volume_confirmed else 0.0  # FIXED: Volume is bonus, not requirement
+                base_confidence = 0.4  # FIXED: Higher base confidence
+                rsi_distance = current_rsi - 55  # FIXED: Use 55 as threshold
+                momentum_bonus = min(0.3, max(0, abs(rsi_slope) / 15 + abs(price_change_2m) / 50))
+                volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 20) + macd_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}, MACD={current_macd:.4f}, Signal={current_signal:.4f}'
+                confidence = min(0.9, base_confidence + (rsi_distance / 25) + momentum_bonus + volume_bonus)
+                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), EMA crossover, momentum={price_change_2m:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.0025)  # 0.25% stop loss
-                take_profit = current_price * (1 + 0.0050)  # 0.50% profit target
+                stop_loss = current_price * (1 - 0.0030)  # 0.30% stop loss
+                take_profit = current_price * (1 + 0.0060)  # 0.60% profit target
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.0025)  # 0.25% stop loss
-                take_profit = current_price * (1 - 0.0050)  # 0.50% profit target
+                stop_loss = current_price * (1 + 0.0030)  # 0.30% stop loss
+                take_profit = current_price * (1 - 0.0060)  # 0.60% profit target
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -111,9 +124,10 @@ class FastScalpStrategy:
                 'max_hold_time': 900,  # 15 minutes
                 'target_hold': '15 minutes',
                 'rsi': current_rsi,
-                'macd': current_macd,
-                'signal': current_signal,
-                'volume_confirmed': volume_confirmed
+                'rsi_slope': rsi_slope,
+                'price_change_2m': price_change_2m,
+                'ema_crossover': ema_crossover,
+                'volume_surge': volume_surge
             }
 
         except Exception as e:
@@ -132,9 +146,9 @@ class FastScalpStrategy:
             'target_hold': '15 minutes'
         }
     
-    def _fast_sma(self, data: pd.Series, period: int) -> pd.Series:
-        """Calculate Simple Moving Average"""
-        return data.rolling(window=period, min_periods=1).mean()
+    def _calculate_ema(self, data: pd.Series, period: int) -> pd.Series:
+        """Calculate Exponential Moving Average"""
+        return data.ewm(span=period, adjust=False).mean()
     
     def _calculate_rsi(self, data: pd.Series, period: int) -> pd.Series:
         """Calculate RSI"""
@@ -152,15 +166,6 @@ class FastScalpStrategy:
             return rsi.fillna(50)
         except Exception as e:
             return pd.Series([50] * len(data), index=data.index)
-    
-    def _calculate_macd(self, data: pd.Series, fast: int, slow: int, signal: int) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        """Calculate MACD"""
-        try:
-            ema_fast = data.ewm(span=fast, adjust=False).mean()
-            ema_slow = data.ewm(span=slow, adjust=False).mean()
-            macd_line = ema_fast - ema_slow
-            signal_line = macd_line.ewm(span=signal, adjust=False).mean()
-            histogram = macd_line - signal_line
-            return macd_line, signal_line, histogram
-        except Exception as e:
-            return pd.Series([0] * len(data)), pd.Series([0] * len(data)), pd.Series([0] * len(data))
+
+# Export the strategy class
+__all__ = ['FastScalpStrategy']
