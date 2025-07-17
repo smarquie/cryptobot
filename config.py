@@ -196,5 +196,5 @@ class BotConfig:
     # Trading cycle interval (seconds)
     CYCLE_INTERVAL = 60  # FIXED: Added missing attribute - 1 minute cycles
 
-# Export the config class
-__all__ = ['BotConfig']
+    # Export the config class
+    __all__ = ['BotConfig']
