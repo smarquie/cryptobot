@@ -3,9 +3,10 @@
 CONFIG.PY - TRADING PARAMETERS
 Replacement for GitHub repository - FIXED VERSION
 Based on working code with permissive parameters
+Maintains BotConfig structure for compatibility
 """
 
-class TradingParameters:
+class BotConfig:
     """
     🎯 CENTRALIZED TRADING PARAMETERS
     Adjust these values to change trading behavior
@@ -18,7 +19,7 @@ class TradingParameters:
     TRADING_SYMBOLS = ["BTC", "AVAX", "SOL"]  # Can add: "AVAX", "MATIC", etc.
     
     # Trading mode and initial balance
-    TRADING_MODE = "paper"
+    MODE = "paper"  # 'paper', 'live', 'backtest'
     PAPER_INITIAL_BALANCE = 10000
     
     # Cycle timing
@@ -204,8 +205,8 @@ class TradingParameters:
         print("\n🎯 CURRENT TRADING PARAMETERS - FIXED VERSION")
         print("=" * 50)
         
-        print(f"\n📊 SYMBOLS: {cls.TRADING_SYMBOLS}")
-        print(f"💰 BALANCE: ${cls.PAPER_INITIAL_BALANCE:,}")
+        print(f"\n�� SYMBOLS: {cls.TRADING_SYMBOLS}")
+        print(f"�� BALANCE: ${cls.PAPER_INITIAL_BALANCE:,}")
         print(f"⏱️ CYCLE: {cls.CYCLE_INTERVAL}s")
         print(f"📊 DATA VALIDATION: {'DISABLED' if not cls.DATA_VALIDATION_ENABLED else f'{cls.MIN_DATA_MINUTES} minutes'}")
         
@@ -224,13 +225,13 @@ class TradingParameters:
         print(f"   Min Confidence: {cls.MOMENTUM_MIN_CONFIDENCE}")
         print(f"   Min Price Change: {cls.MOMENTUM_MIN_PRICE_CHANGE}%")
         
-        print(f"\n🎯 TTM SQUEEZE (FIXED):")
+        print(f"\n�� TTM SQUEEZE (FIXED):")
         print(f"   Min Squeeze Periods: {cls.TTM_MIN_SQUEEZE_PERIODS}")
         print(f"   Min Confidence: {cls.TTM_MIN_CONFIDENCE}")
         print(f"   Momentum Threshold: {cls.TTM_MOMENTUM_THRESHOLD}")
         
         sizing = cls.get_position_sizing_config()
-        print(f"\n💰 POSITION SIZING ({cls.POSITION_SIZE_MODE.upper()}):")
+        print(f"\n�� POSITION SIZING ({cls.POSITION_SIZE_MODE.upper()}):")
         print(f"   Risk/trade: {sizing['risk_per_trade']*100:.1f}%")
         print(f"   Max position: {sizing['max_position_pct']*100:.1f}%")
         print(f"   Max exposure: {sizing['max_total_exposure']*100:.1f}%")
@@ -242,8 +243,5 @@ class TradingParameters:
         print(f"   ✅ Much more permissive entry conditions")
         print(f"   ✅ Better risk-reward ratios")
 
-# Initialize parameters
-params = TradingParameters()
-
-# Export the parameters
-__all__ = ['TradingParameters', 'params']
+# Export the BotConfig class
+__all__ = ['BotConfig']
