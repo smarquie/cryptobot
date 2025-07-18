@@ -46,7 +46,17 @@ class SignalAggregator:
         valid_signals = []
         for signal in signals:
             strategy_name = signal.get('strategy', 'Unknown')
-            min_confidence = getattr(BotConfig, f'{strategy_name.upper().replace("-", "_")}_MIN_CONFIDENCE', BotConfig.MIN_CONFIDENCE)
+            
+            # Map strategy names to config keys
+            strategy_config_map = {
+                'UltraScalpStrategy': 'ULTRA_SCALP_MIN_CONFIDENCE',
+                'FastScalpStrategy': 'FAST_SCALP_MIN_CONFIDENCE', 
+                'QuickMomentumStrategy': 'QUICK_MOMENTUM_MIN_CONFIDENCE',
+                'TTMSqueezeStrategy': 'TTM_SQUEEZE_MIN_CONFIDENCE'
+            }
+            
+            config_key = strategy_config_map.get(strategy_name, 'MIN_CONFIDENCE')
+            min_confidence = getattr(BotConfig, config_key, BotConfig.MIN_CONFIDENCE)
             
             if signal['confidence'] >= min_confidence:
                 valid_signals.append(signal)
@@ -55,7 +65,15 @@ class SignalAggregator:
             return {'action': 'hold', 'confidence': 0.0, 'reason': 'No valid signals'}
         
         # FIXED: Use strategy weights properly
-        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(x['strategy'], 1.0))
+        # Map strategy names to weight keys
+        strategy_weight_map = {
+            'UltraScalpStrategy': 'Ultra-Scalp',
+            'FastScalpStrategy': 'Fast-Scalp',
+            'QuickMomentumStrategy': 'Quick-Momentum', 
+            'TTMSqueezeStrategy': 'TTM-Squeeze'
+        }
+        
+        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(strategy_weight_map.get(x['strategy'], x['strategy']), 1.0))
         return best
 
 class TradingEngine:
