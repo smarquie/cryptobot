@@ -41,10 +41,21 @@ class SignalAggregator:
 
     def aggregate(self, df: pd.DataFrame, symbol: str) -> Dict:
         signals = [s.analyze_and_signal(df, symbol) for s in self.strategies]
-        valid_signals = [s for s in signals if s['confidence'] >= BotConfig.ULTRA_SCALP_MIN_CONFIDENCE]
+        
+        # FIXED: Use correct confidence thresholds for each strategy
+        valid_signals = []
+        for signal in signals:
+            strategy_name = signal.get('strategy', 'Unknown')
+            min_confidence = getattr(BotConfig, f'{strategy_name.upper().replace("-", "_")}_MIN_CONFIDENCE', BotConfig.MIN_CONFIDENCE)
+            
+            if signal['confidence'] >= min_confidence:
+                valid_signals.append(signal)
+        
         if not valid_signals:
             return {'action': 'hold', 'confidence': 0.0, 'reason': 'No valid signals'}
-        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights[x['strategy']])
+        
+        # FIXED: Use strategy weights properly
+        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(x['strategy'], 1.0))
         return best
 
 class TradingEngine:
@@ -62,16 +73,60 @@ class TradingEngine:
         self.is_running = False
         self.cycle_count = 0
         self.symbols = BotConfig.TRADING_SYMBOLS
+        
+        # FIXED: Add data collection tracking
+        self.data_collection_start = None
+        self.trading_enabled = False
 
     async def start_trading(self):
         self.is_running = True
         logger.info("🚀 Trading engine started")
+        
+        # FIXED: Add data collection phase
+        if BotConfig.DATA_COLLECTION_ENABLED:
+            await self.collect_initial_data()
+        
         while self.is_running:
             await self.trading_cycle()
             await asyncio.sleep(BotConfig.CYCLE_INTERVAL)
     
+    async def collect_initial_data(self):
+        """Collect initial data before starting trading"""
+        logger.info(f"📊 Starting {BotConfig.INITIAL_DATA_COLLECTION_MINUTES} minute data collection...")
+        self.data_collection_start = datetime.now()
+        
+        for minute in range(BotConfig.INITIAL_DATA_COLLECTION_MINUTES):
+            if not self.is_running:
+                return
+            
+            logger.info(f"⏳ Data collection: {minute + 1}/{BotConfig.INITIAL_DATA_COLLECTION_MINUTES} minutes")
+            
+            # Collect data for each symbol
+            for symbol in self.symbols:
+                try:
+                    df = self.exchange.get_candles_df(symbol, interval='1m', lookback=BotConfig.MIN_DATA_MINUTES)
+                    if not df.empty:
+                        logger.info(f"✅ {symbol}: {len(df)} data points collected")
+                    else:
+                        logger.warning(f"⚠️ {symbol}: No data collected")
+                except Exception as e:
+                    logger.error(f"❌ {symbol}: Data collection error - {e}")
+            
+            await asyncio.sleep(60)  # Wait 1 minute
+        
+        self.trading_enabled = True
+        logger.info("✅ Data collection complete - Trading enabled!")
+    
     async def trading_cycle(self):
         try:
+            # FIXED: Check if trading is enabled
+            if not self.trading_enabled and BotConfig.DATA_COLLECTION_ENABLED:
+                if self.cycle_count % 10 == 0:  # Log every 10 cycles
+                    elapsed = (datetime.now() - self.data_collection_start).total_seconds() / 60 if self.data_collection_start else 0
+                    remaining = max(0, BotConfig.INITIAL_DATA_COLLECTION_MINUTES - elapsed)
+                    logger.info(f"📊 Data collection: {elapsed:.1f}/{BotConfig.INITIAL_DATA_COLLECTION_MINUTES} min (remaining: {remaining:.1f})")
+                return
+            
             market_data = self.exchange.get_market_data()
             self.cycle_count += 1
 
@@ -88,6 +143,11 @@ class TradingEngine:
                     continue
 
                 signal = self.aggregator.aggregate(df, symbol)
+                
+                # FIXED: Log signal details for debugging
+                if signal['action'] != 'hold':
+                    logger.info(f"🎯 {symbol} Signal: {signal['action']} (conf: {signal['confidence']:.3f}) - {signal['reason']}")
+                
                 if signal['action'] != 'hold':
                     signal['position_size'] = self.portfolio.calculate_position_size(signal, signal['entry_price'])
                     if self.portfolio.open_position(signal, symbol, signal['entry_price']):
@@ -141,6 +201,8 @@ def check_status():
         print(f"💼 Balance: ${summary['balance']:,.2f}")
         print(f"📈 Total Value: ${summary['total_value']:,.2f}")
         print(f"📊 Open Positions: {summary['open_positions']}")
+        print(f"🔄 Trading Enabled: {engine.trading_enabled}")
+        print(f"📊 Cycle Count: {engine.cycle_count}")
     else:
         print("❌ Bot not running")
 
