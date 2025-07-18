@@ -49,10 +49,10 @@ class SignalAggregator:
             
             # Map strategy names to config keys
             strategy_config_map = {
-                'UltraScalpStrategy': 'ULTRA_SCALP_MIN_CONFIDENCE',
-                'FastScalpStrategy': 'FAST_SCALP_MIN_CONFIDENCE', 
-                'QuickMomentumStrategy': 'QUICK_MOMENTUM_MIN_CONFIDENCE',
-                'TTMSqueezeStrategy': 'TTM_SQUEEZE_MIN_CONFIDENCE'
+                'Ultra-Scalp': 'ULTRA_SCALP_MIN_CONFIDENCE',
+                'Fast-Scalp': 'FAST_SCALP_MIN_CONFIDENCE', 
+                'Quick-Momentum': 'QUICK_MOMENTUM_MIN_CONFIDENCE',
+                'TTM-Squeeze': 'TTM_SQUEEZE_MIN_CONFIDENCE'
             }
             
             config_key = strategy_config_map.get(strategy_name, 'MIN_CONFIDENCE')
@@ -65,15 +65,7 @@ class SignalAggregator:
             return {'action': 'hold', 'confidence': 0.0, 'reason': 'No valid signals'}
         
         # FIXED: Use strategy weights properly
-        # Map strategy names to weight keys
-        strategy_weight_map = {
-            'UltraScalpStrategy': 'Ultra-Scalp',
-            'FastScalpStrategy': 'Fast-Scalp',
-            'QuickMomentumStrategy': 'Quick-Momentum', 
-            'TTMSqueezeStrategy': 'TTM-Squeeze'
-        }
-        
-        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(strategy_weight_map.get(x['strategy'], x['strategy']), 1.0))
+        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(x['strategy'], 1.0))
         return best
 
 class TradingEngine:
@@ -149,8 +141,9 @@ class TradingEngine:
             self.cycle_count += 1
 
             summary = self.portfolio.get_summary()
-            if self.cycle_count % 20 == 0:
+            if self.cycle_count % 5 == 0:  # Log every 5 cycles instead of 20
                 logger.info(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f}")
+                print(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f}")
 
             for symbol in self.symbols:
                 if self.portfolio.has_position(symbol):
@@ -162,14 +155,29 @@ class TradingEngine:
 
                 signal = self.aggregator.aggregate(df, symbol)
                 
-                # FIXED: Log signal details for debugging
+                # FIXED: Enhanced logging for debugging
                 if signal['action'] != 'hold':
                     logger.info(f"🎯 {symbol} Signal: {signal['action']} (conf: {signal['confidence']:.3f}) - {signal['reason']}")
+                    print(f"🎯 {symbol} Signal: {signal['action']} (conf: {signal['confidence']:.3f}) - {signal['reason']}")
+                else:
+                    # Log why no signal was generated (every 5 cycles to see more activity)
+                    if self.cycle_count % 5 == 0:
+                        logger.info(f"📊 {symbol}: No signal generated (confidence: {signal['confidence']:.3f}, reason: {signal['reason']})")
+                        print(f"📊 {symbol}: No signal generated (confidence: {signal['confidence']:.3f}, reason: {signal['reason']})")
                 
                 if signal['action'] != 'hold':
-                    signal['position_size'] = self.portfolio.calculate_position_size(signal, signal['entry_price'])
-                    if self.portfolio.open_position(signal, symbol, signal['entry_price']):
-                        logger.info(f"📈 {signal['action']} on {symbol} at {signal['entry_price']:.2f}")
+                    # Get current market price for execution
+                    current_price = market_data.get(symbol, signal.get('entry_price', 0))
+                    if current_price <= 0:
+                        logger.warning(f"⚠️ {symbol}: Invalid price {current_price} - skipping signal")
+                        continue
+                    
+                    # Update signal with current price
+                    signal['entry_price'] = current_price
+                    signal['position_size'] = self.portfolio.calculate_position_size(signal, current_price)
+                    
+                    if self.portfolio.open_position(signal, symbol, current_price):
+                        logger.info(f"📈 {signal['action']} on {symbol} at {current_price:.2f}")
                         if self.telegram.enabled:
                             self.telegram.send_message(
                                 f"*Signal*\n"
