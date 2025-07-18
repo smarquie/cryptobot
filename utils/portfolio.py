@@ -33,6 +33,35 @@ class Portfolio:
     def has_position(self, symbol: str) -> bool:
         return symbol in self.positions
     
+    def calculate_position_size(self, signal: Dict[str, Any], price: float) -> float:
+        """Calculate position size based on signal and current price"""
+        try:
+            # Use a simple position sizing strategy
+            # Risk 1% of portfolio per trade
+            risk_amount = self.balance * 0.01
+            
+            # Calculate position size based on stop loss
+            if 'stop_loss' in signal and signal['stop_loss'] > 0:
+                stop_loss_distance = abs(price - signal['stop_loss'])
+                if stop_loss_distance > 0:
+                    position_size = risk_amount / stop_loss_distance
+                else:
+                    position_size = risk_amount / (price * 0.01)  # 1% of price as fallback
+            else:
+                # Default to 1% of portfolio value
+                position_size = (self.balance * 0.01) / price
+            
+            # Ensure position size is reasonable
+            max_position = self.balance * 0.1 / price  # Max 10% of portfolio
+            position_size = min(position_size, max_position)
+            
+            return max(0.001, position_size)  # Minimum 0.001
+            
+        except Exception as e:
+            logger.error(f"❌ Error calculating position size: {e}")
+            # Fallback to 1% of portfolio
+            return (self.balance * 0.01) / price
+    
     def open_position(self, signal: Dict[str, Any], symbol: str, price: float):
         """Open a position based on trading signal"""
         if self.has_position(symbol):
@@ -78,24 +107,26 @@ class Portfolio:
     
     def get_summary(self) -> Dict[str, Any]:
         """Return portfolio summary including exposure, PnL, and positions"""
-        total_value = self.balance + sum(
-            pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) 
-            for pos in self.positions.values()
-        )
+        # Calculate total value (simplified without data_client)
+        total_value = self.balance
+        for pos in self.positions.values():
+            total_value += pos['size'] * pos['entry_price']
         
+        # Calculate unrealized PnL (simplified)
         total_unrealized_pnl = 0.0
         for pos in self.positions.values():
-            current_price = self.data_client.get_market_data().get(pos['symbol'], pos['entry_price'])
+            # For now, use entry price as current price (simplified)
+            current_price = pos['entry_price']
             if pos['side'] == 'buy':
                 total_unrealized_pnl += (current_price - pos['entry_price']) * pos['size']
             else:
                 total_unrealized_pnl += (pos['entry_price'] - current_price) * pos['size']
         
-        exposure_pct = (sum(
-            pos['size'] * self.data_client.get_market_data().get(pos['symbol'], pos['entry_price']) 
-            for pos in self.positions.values()
-        ) / total_value * 100) if total_value > 0 else 0.0
+        # Calculate exposure percentage
+        exposure_value = sum(pos['size'] * pos['entry_price'] for pos in self.positions.values())
+        exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
         
+        # Calculate win rate
         win_trades = [p for p in self.trade_history if p['pnl'] > 0]
         win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0.0
         
