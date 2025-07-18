@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import random
+import time
+from datetime import datetime, timedelta
 from config import BotConfig
 import eth_account
 from eth_account.signers.local import LocalAccount
@@ -88,8 +90,12 @@ class ExchangeInterface:
                 }
                 hl_interval = interval_map.get(interval, '1m')
     
-                # Fetch candles using correct SDK syntax
-                candles = self.hyperliquid_info.candles_snapshot(symbol, hl_interval)
+                # Calculate time range for candles
+                end_time = int(time.time() * 1000)  # Current time in milliseconds
+                start_time = end_time - (lookback * 60 * 1000)  # lookback minutes ago
+                
+                # Fetch candles using correct SDK syntax with time parameters
+                candles = self.hyperliquid_info.candles_snapshot(symbol, hl_interval, start_time, end_time)
                 df = pd.DataFrame(candles)
     
                 # Rename columns
