@@ -66,10 +66,28 @@ class SignalAggregator:
                 # Get data for this strategy's timeframe
                 df = market_data.get(f"{symbol}_{timeframe}")
                 if df is None or df.empty:
+                    print(f"⚠️ No data for {symbol}_{timeframe}")
+                    continue
+                
+                # Ensure DataFrame has required columns
+                required_columns = ['open', 'high', 'low', 'close', 'volume']
+                if not all(col in df.columns for col in required_columns):
+                    print(f"⚠️ Missing required columns for {symbol}_{timeframe}")
                     continue
                 
                 # Run strategy analysis
                 signal = strategy.analyze_and_signal(df, symbol)
+                
+                # Validate signal is a dictionary
+                if not isinstance(signal, dict):
+                    print(f"⚠️ {strategy_name} returned non-dict signal: {type(signal)}")
+                    continue
+                
+                # Ensure signal has required fields
+                required_signal_fields = ['action', 'confidence', 'strategy', 'reason']
+                if not all(field in signal for field in required_signal_fields):
+                    print(f"⚠️ {strategy_name} signal missing required fields")
+                    continue
                 
                 # Add strategy-specific timeline information
                 signal.update({
@@ -87,9 +105,14 @@ class SignalAggregator:
                 
                 if signal['confidence'] >= min_confidence:
                     all_signals.append(signal)
+                    print(f"✅ {strategy_name} generated valid signal: {signal['action']} (conf: {signal['confidence']:.3f})")
+                else:
+                    print(f"📊 {strategy_name} signal below threshold: {signal['confidence']:.3f} < {min_confidence}")
                     
             except Exception as e:
                 print(f"❌ Error in {strategy_name} strategy: {e}")
+                import traceback
+                traceback.print_exc()
         
         return all_signals
 
