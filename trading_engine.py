@@ -121,9 +121,11 @@ class TradingEngine:
                 
                 # Process each signal from different strategies
                 for signal in signals:
-                    # Skip if we already have a position for this symbol (for now)
-                    # TODO: Allow multiple positions per symbol with different strategies
-                    if self.portfolio.has_position(symbol):
+                    # FIXED: Check if we already have a position for THIS SPECIFIC STRATEGY
+                    strategy_name = signal.get('strategy', 'unknown')
+                    if self.portfolio.has_position_for_strategy(symbol, strategy_name):
+                        if self.cycle_count % 10 == 0:  # Log every 10 cycles to avoid spam
+                            logger.info(f"📊 {symbol}: Already have {strategy_name} position - skipping")
                         continue
                     
                     # Validate signal is a dictionary
