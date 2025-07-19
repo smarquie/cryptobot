@@ -29,6 +29,7 @@ class Portfolio:
         self.strategy_positions = {}  # (symbol, strategy) -> position dict
         self.trade_history = []  # Added missing attribute
         self.data_client = None  # Added missing attribute - you'll need to initialize this properly
+        self.current_prices = {}  # Store current market prices
         logger.info(f"💼 Portfolio initialized with ${self.balance:,.2f}")
     
     def has_position(self, symbol: str) -> bool:
@@ -37,6 +38,12 @@ class Portfolio:
     def has_position_for_strategy(self, symbol: str, strategy: str) -> bool:
         """Check if we have a position for a specific symbol and strategy"""
         return (symbol, strategy) in self.strategy_positions
+    
+    def update_current_prices(self, market_data: Dict):
+        """Update current market prices for mark-to-market calculations"""
+        for symbol, price in market_data.items():
+            if isinstance(price, (int, float)) and price > 0:
+                self.current_prices[symbol] = price
     
     def calculate_position_size(self, signal: Dict[str, Any], price: float) -> float:
         """Calculate position size based on signal and current price"""
@@ -95,8 +102,12 @@ class Portfolio:
             # Store position by symbol and strategy (for multi-strategy support)
             self.strategy_positions[(symbol, strategy)] = position_data
             
-            self.balance -= price * size
+            # Deduct the cost from balance
+            position_cost = price * size
+            self.balance -= position_cost
+            
             logger.info(f"📈 Opened {signal['action']} on {symbol} with {strategy} strategy")
+            logger.info(f"💰 Position cost: ${position_cost:.2f}, New balance: ${self.balance:.2f}")
             return True
         except Exception as e:
             logger.error(f"❌ Failed to open position: {e}")
@@ -114,8 +125,15 @@ class Portfolio:
         if (symbol, strategy) in self.strategy_positions:
             del self.strategy_positions[(symbol, strategy)]
         
-        pnl = (price - pos['entry_price']) * pos['size'] if pos['side'] == 'buy' else (pos['entry_price'] - price) * pos['size']
-        self.balance += price * pos['size']
+        # Calculate P&L
+        if pos['side'] == 'buy':
+            pnl = (price - pos['entry_price']) * pos['size']
+        else:  # sell position
+            pnl = (pos['entry_price'] - price) * pos['size']
+        
+        # Add proceeds back to balance
+        position_value = price * pos['size']
+        self.balance += position_value
         
         # Add to trade history
         self.trade_history.append({
@@ -125,28 +143,38 @@ class Portfolio:
             'reason': reason
         })
         
-        logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f} | PnL: ${pnl:.2f} ({reason})")
+        logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f}")
+        logger.info(f"💰 P&L: ${pnl:.2f}, Position value: ${position_value:.2f}, New balance: ${self.balance:.2f}")
         return True
     
     def get_summary(self) -> Dict[str, Any]:
-        """Return portfolio summary including exposure, PnL, and positions"""
-        # Calculate total value (simplified without data_client)
+        """Return portfolio summary with proper mark-to-market calculations"""
+        # Start with cash balance
         total_value = self.balance
-        for pos in self.positions.values():
-            total_value += pos['size'] * pos['entry_price']
-        
-        # Calculate unrealized PnL (simplified)
         total_unrealized_pnl = 0.0
-        for pos in self.positions.values():
-            # For now, use entry price as current price (simplified)
-            current_price = pos['entry_price']
+        
+        # Add current market value of all positions
+        for symbol, pos in self.positions.items():
+            current_price = self.current_prices.get(symbol, pos['entry_price'])
+            
+            # Calculate current position value
+            position_value = pos['size'] * current_price
+            total_value += position_value
+            
+            # Calculate unrealized P&L
             if pos['side'] == 'buy':
-                total_unrealized_pnl += (current_price - pos['entry_price']) * pos['size']
-            else:
-                total_unrealized_pnl += (pos['entry_price'] - current_price) * pos['size']
+                unrealized_pnl = (current_price - pos['entry_price']) * pos['size']
+            else:  # sell position
+                unrealized_pnl = (pos['entry_price'] - current_price) * pos['size']
+            
+            total_unrealized_pnl += unrealized_pnl
+            
+            # Log position details for debugging
+            if self.positions:  # Only log if we have positions
+                logger.debug(f"📊 {symbol} ({pos['strategy']}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
         
         # Calculate exposure percentage
-        exposure_value = sum(pos['size'] * pos['entry_price'] for pos in self.positions.values())
+        exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for symbol, pos in self.positions.items())
         exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
         
         # Calculate win rate
