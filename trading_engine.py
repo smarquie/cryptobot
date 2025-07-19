@@ -100,12 +100,16 @@ class TradingEngine:
             
             # Get market data for all timeframes
             market_data = self._get_multi_timeframe_data()
+            
+            # FIXED: Update portfolio with current market prices for mark-to-market
+            self.portfolio.update_current_prices(market_data)
+            
             self.cycle_count += 1
 
             summary = self.portfolio.get_summary()
             if self.cycle_count % 5 == 0:  # Log every 5 cycles instead of 20
-                logger.info(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f}")
-                print(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f}")
+                logger.info(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f} | P&L: ${summary['unrealized_pnl']:,.2f}")
+                print(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f} | P&L: ${summary['unrealized_pnl']:,.2f}")
 
             # Process each symbol for multiple strategies
             for symbol in self.symbols:
