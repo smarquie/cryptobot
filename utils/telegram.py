@@ -91,6 +91,10 @@ class TelegramNotifier:
         except Exception as e:
             logger.error(f"[Telegram] Network error: {e}")
             return False
+    
+    def send_message(self, message: str) -> bool:
+        """Public method to send message to Telegram"""
+        return self._send_message(message)
 
     def send_position_opened(self, symbol: str, side: str, size: float, entry_price: float, strategy: str, reason: str, target_hold: str, portfolio_summary: Dict) -> bool:
         emoji = "🟢" if side == "buy" else "🔴"
