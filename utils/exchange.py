@@ -98,19 +98,38 @@ class ExchangeInterface:
                 candles = self.hyperliquid_info.candles_snapshot(symbol, hl_interval, start_time, end_time)
                 df = pd.DataFrame(candles)
     
-                # Rename columns
-                df.rename(columns={
-                    'T': 'timestamp',
-                    'o': 'open',
-                    'h': 'high',
-                    'l': 'low',
-                    'c': 'close',
-                    'v': 'volume'
-                }, inplace=True)
-    
-                # Convert timestamp to datetime
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
+                # Check if DataFrame has expected columns
+                if not df.empty:
+                    # Rename columns if they exist
+                    column_mapping = {
+                        'T': 'timestamp',
+                        'o': 'open',
+                        'h': 'high',
+                        'l': 'low',
+                        'c': 'close',
+                        'v': 'volume'
+                    }
+                    
+                    # Only rename columns that exist
+                    existing_columns = df.columns.tolist()
+                    rename_dict = {k: v for k, v in column_mapping.items() if k in existing_columns}
+                    if rename_dict:
+                        df.rename(columns=rename_dict, inplace=True)
+                    
+                    # Ensure required columns exist
+                    required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
+                    missing_columns = [col for col in required_columns if col not in df.columns]
+                    
+                    if missing_columns:
+                        print(f"⚠️ Missing columns: {missing_columns}")
+                        return self._generate_fallback_candles(symbol, lookback)
+                    
+                    # Convert timestamp to datetime
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                    df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
+                else:
+                    print(f"⚠️ Empty DataFrame for {symbol}")
+                    return self._generate_fallback_candles(symbol, lookback)
                 return df.sort_values('timestamp').reset_index(drop=True)
             except Exception as e:
                 print(f"❌ Error fetching real candles: {e}")
@@ -184,4 +203,5 @@ class ExchangeInterface:
             'XRP': (0.4, 0.8),
         }
         return ranges.get(symbol, (10, 1000))  # Default fallback range
+
 
