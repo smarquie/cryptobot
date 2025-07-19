@@ -165,28 +165,33 @@ class TradingEngine:
                     if self.portfolio.has_position(symbol):
                         continue
                     
+                    # Validate signal is a dictionary
+                    if not isinstance(signal, dict):
+                        logger.warning(f"⚠️ {symbol}: Invalid signal type {type(signal)} - skipping")
+                        continue
+                    
                     # Enhanced logging with timeline information
-                    if signal['action'] != 'hold':
+                    if signal.get('action') != 'hold':
                         current_price = market_data.get(symbol, signal.get('entry_price', 0))
                         if current_price > 0:
                             position_size = self.portfolio.calculate_position_size(signal, current_price)
                             position_value = position_size * current_price
                             
                             signal_message = (
-                                f"🎯 {symbol} Signal: {signal['action']} (conf: {signal['confidence']:.3f})\n"
-                                f"📊 Strategy: {signal['strategy']} ({signal['timeframe']})\n"
-                                f"⏰ Timeline: {signal['target_hold']}\n"
+                                f"🎯 {symbol} Signal: {signal.get('action', 'unknown')} (conf: {signal.get('confidence', 0):.3f})\n"
+                                f"📊 Strategy: {signal.get('strategy', 'unknown')} ({signal.get('timeframe', 'unknown')})\n"
+                                f"⏰ Timeline: {signal.get('target_hold', 'unknown')}\n"
                                 f"💰 Size: {position_size:.6f} {symbol}\n"
                                 f"💵 Price: ${current_price:.2f}\n"
                                 f"💎 Value: ${position_value:.2f}\n"
-                                f"📝 Reason: {signal['reason']}"
+                                f"📝 Reason: {signal.get('reason', 'unknown')}"
                             )
                         else:
                             signal_message = (
-                                f"🎯 {symbol} Signal: {signal['action']} (conf: {signal['confidence']:.3f})\n"
-                                f"📊 Strategy: {signal['strategy']} ({signal['timeframe']})\n"
-                                f"⏰ Timeline: {signal['target_hold']}\n"
-                                f"📝 Reason: {signal['reason']}"
+                                f"🎯 {symbol} Signal: {signal.get('action', 'unknown')} (conf: {signal.get('confidence', 0):.3f})\n"
+                                f"📊 Strategy: {signal.get('strategy', 'unknown')} ({signal.get('timeframe', 'unknown')})\n"
+                                f"⏰ Timeline: {signal.get('target_hold', 'unknown')}\n"
+                                f"📝 Reason: {signal.get('reason', 'unknown')}"
                             )
                         
                         logger.info(signal_message)
@@ -202,14 +207,14 @@ class TradingEngine:
                                 portfolio_summary = self.portfolio.get_summary()
                                 
                                 trade_message = (
-                                    f"📈 {signal['action'].upper()} {symbol}\n"
-                                    f"📊 Strategy: {signal['strategy']} ({signal['timeframe']})\n"
-                                    f"⏰ Timeline: {signal['target_hold']}\n"
-                                    f"💰 Size: {signal['position_size']:.6f} {symbol}\n"
+                                    f"📈 {signal.get('action', 'unknown').upper()} {symbol}\n"
+                                    f"📊 Strategy: {signal.get('strategy', 'unknown')} ({signal.get('timeframe', 'unknown')})\n"
+                                    f"⏰ Timeline: {signal.get('target_hold', 'unknown')}\n"
+                                    f"💰 Size: {signal.get('position_size', 0):.6f} {symbol}\n"
                                     f"💵 Entry: ${current_price:.2f}\n"
                                     f"💎 Value: ${position_value:.2f}\n"
-                                    f"📊 Confidence: {signal['confidence']:.3f}\n"
-                                    f"📝 Reason: {signal['reason']}\n"
+                                    f"📊 Confidence: {signal.get('confidence', 0):.3f}\n"
+                                    f"📝 Reason: {signal.get('reason', 'unknown')}\n"
                                     f"💼 Portfolio: ${portfolio_summary['total_value']:,.2f}"
                                 )
                                 
@@ -219,14 +224,14 @@ class TradingEngine:
                                 if self.telegram.enabled:
                                     self.telegram.send_message(
                                         f"*TRADE EXECUTED*\n"
-                                        f"📈 {signal['action'].upper()} {symbol}\n"
-                                        f"📊 Strategy: {signal['strategy']} ({signal['timeframe']})\n"
-                                        f"⏰ Timeline: {signal['target_hold']}\n"
-                                        f"💰 Size: {signal['position_size']:.6f} {symbol}\n"
+                                        f"📈 {signal.get('action', 'unknown').upper()} {symbol}\n"
+                                        f"📊 Strategy: {signal.get('strategy', 'unknown')} ({signal.get('timeframe', 'unknown')})\n"
+                                        f"⏰ Timeline: {signal.get('target_hold', 'unknown')}\n"
+                                        f"💰 Size: {signal.get('position_size', 0):.6f} {symbol}\n"
                                         f"💵 Entry: ${current_price:.2f}\n"
                                         f"💎 Value: ${position_value:.2f}\n"
-                                        f"📊 Confidence: {signal['confidence']:.3f}\n"
-                                        f"📝 Reason: `{signal['reason']}`\n"
+                                        f"📊 Confidence: {signal.get('confidence', 0):.3f}\n"
+                                        f"📝 Reason: `{signal.get('reason', 'unknown')}`\n"
                                         f"💼 Portfolio: ${portfolio_summary['total_value']:,.2f}"
                                     )
         except Exception as e:
