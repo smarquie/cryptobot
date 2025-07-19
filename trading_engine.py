@@ -29,45 +29,6 @@ GLOBAL_BOT_STATE = {
     'stop_requested': False
 }
 
-class SignalAggregator:
-    def __init__(self):
-        self.strategies = [
-            UltraScalpStrategy(),
-            FastScalpStrategy(),
-            QuickMomentumStrategy(),
-            TTMSqueezeStrategy()
-        ]
-        self.weights = BotConfig.STRATEGY_WEIGHTS
-
-    def aggregate(self, df: pd.DataFrame, symbol: str) -> Dict:
-        signals = [s.analyze_and_signal(df, symbol) for s in self.strategies]
-        
-        # FIXED: Use correct confidence thresholds for each strategy
-        valid_signals = []
-        for signal in signals:
-            strategy_name = signal.get('strategy', 'Unknown')
-            
-            # Map strategy names to config keys
-            strategy_config_map = {
-                'Ultra-Scalp': 'ULTRA_SCALP_MIN_CONFIDENCE',
-                'Fast-Scalp': 'FAST_SCALP_MIN_CONFIDENCE', 
-                'Quick-Momentum': 'QUICK_MOMENTUM_MIN_CONFIDENCE',
-                'TTM-Squeeze': 'TTM_SQUEEZE_MIN_CONFIDENCE'
-            }
-            
-            config_key = strategy_config_map.get(strategy_name, 'MIN_CONFIDENCE')
-            min_confidence = getattr(BotConfig, config_key, BotConfig.MIN_CONFIDENCE)
-            
-            if signal['confidence'] >= min_confidence:
-                valid_signals.append(signal)
-        
-        if not valid_signals:
-            return {'action': 'hold', 'confidence': 0.0, 'reason': 'No valid signals'}
-        
-        # FIXED: Use strategy weights properly
-        best = max(valid_signals, key=lambda x: x['confidence'] * self.weights.get(x['strategy'], 1.0))
-        return best
-
 class TradingEngine:
     def __init__(self):
         self.config = BotConfig
