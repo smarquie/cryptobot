@@ -25,19 +25,19 @@ class Position:
 class Portfolio:
     def __init__(self):
         self.balance = BotConfig.INITIAL_BALANCE
-        self.positions = {}  # symbol -> position dict
-        self.strategy_positions = {}  # (symbol, strategy) -> position dict
+        self.positions = {}  # (symbol, strategy) -> position dict
         self.trade_history = []  # Added missing attribute
         self.data_client = None  # Added missing attribute - you'll need to initialize this properly
         self.current_prices = {}  # Store current market prices
         logger.info(f"💼 Portfolio initialized with ${self.balance:,.2f}")
     
     def has_position(self, symbol: str) -> bool:
-        return symbol in self.positions
+        """Check if we have ANY position for a symbol (for backward compatibility)"""
+        return any(s == symbol for s, _ in self.positions.keys())
     
     def has_position_for_strategy(self, symbol: str, strategy: str) -> bool:
         """Check if we have a position for a specific symbol and strategy"""
-        return (symbol, strategy) in self.strategy_positions
+        return (symbol, strategy) in self.positions
     
     def update_current_prices(self, market_data: Dict):
         """Update current market prices for mark-to-market calculations"""
@@ -96,11 +96,8 @@ class Portfolio:
                 'take_profit': signal.get('take_profit')
             }
             
-            # Store position by symbol (for backward compatibility)
-            self.positions[symbol] = position_data
-            
-            # Store position by symbol and strategy (for multi-strategy support)
-            self.strategy_positions[(symbol, strategy)] = position_data
+            # Store position by symbol AND strategy (FIXED: No more overwriting!)
+            self.positions[(symbol, strategy)] = position_data
             
             # Deduct the cost from balance
             position_cost = price * size
@@ -113,17 +110,12 @@ class Portfolio:
             logger.error(f"❌ Failed to open position: {e}")
             return False
     
-    def close_position(self, symbol: str, price: float, reason: str = 'manual'):
-        """Close an open position"""
-        if symbol not in self.positions:
+    def close_position(self, symbol: str, strategy: str, price: float, reason: str = 'manual'):
+        """Close a specific position by symbol and strategy"""
+        if (symbol, strategy) not in self.positions:
             return False
         
-        pos = self.positions.pop(symbol)
-        strategy = pos.get('strategy', 'unknown')
-        
-        # Remove from strategy positions as well
-        if (symbol, strategy) in self.strategy_positions:
-            del self.strategy_positions[(symbol, strategy)]
+        pos = self.positions.pop((symbol, strategy))
         
         # Calculate P&L
         if pos['side'] == 'buy':
@@ -154,7 +146,7 @@ class Portfolio:
         total_unrealized_pnl = 0.0
         
         # Add current market value of all positions
-        for symbol, pos in self.positions.items():
+        for (symbol, strategy), pos in self.positions.items():
             current_price = self.current_prices.get(symbol, pos['entry_price'])
             
             # Calculate current position value
@@ -171,10 +163,10 @@ class Portfolio:
             
             # Log position details for debugging
             if self.positions:  # Only log if we have positions
-                logger.debug(f"📊 {symbol} ({pos['strategy']}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
+                logger.debug(f"📊 {symbol} ({strategy}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
         
         # Calculate exposure percentage
-        exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for symbol, pos in self.positions.items())
+        exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for (symbol, strategy), pos in self.positions.items())
         exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
         
         # Calculate win rate
