@@ -1,7 +1,7 @@
 # utils/portfolio.py
 import logging
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import BotConfig
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,8 @@ class Portfolio:
         self.trade_history = []  # Added missing attribute
         self.data_client = None  # Added missing attribute - you'll need to initialize this properly
         self.current_prices = {}  # Store current market prices
+        self.signal_cooldown = {}  # symbol -> last_trade_time
+        self.cooldown_minutes = 2  # 2-minute cooling period
         logger.info(f"💼 Portfolio initialized with ${self.balance:,.2f}")
     
     def has_position(self, symbol: str) -> bool:
@@ -38,6 +40,30 @@ class Portfolio:
     def has_position_for_strategy(self, symbol: str, strategy: str) -> bool:
         """Check if we have a position for a specific symbol and strategy"""
         return (symbol, strategy) in self.positions
+    
+    def get_position_for_symbol(self, symbol: str) -> Dict:
+        """Get the first position for a symbol (for direction checking)"""
+        for (s, strategy), pos in self.positions.items():
+            if s == symbol:
+                return pos
+        return None
+    
+    def is_in_cooldown(self, symbol: str) -> bool:
+        """Check if symbol is in cooling period"""
+        if symbol not in self.signal_cooldown:
+            return False
+        
+        time_since_last = (datetime.now() - self.signal_cooldown[symbol]).total_seconds() / 60
+        return time_since_last < self.cooldown_minutes
+    
+    def get_cooldown_remaining(self, symbol: str) -> float:
+        """Get remaining cooldown time in minutes"""
+        if symbol not in self.signal_cooldown:
+            return 0.0
+        
+        time_since_last = (datetime.now() - self.signal_cooldown[symbol]).total_seconds() / 60
+        remaining = max(0, self.cooldown_minutes - time_since_last)
+        return remaining
     
     def update_current_prices(self, market_data: Dict):
         """Update current market prices for mark-to-market calculations"""
@@ -74,9 +100,43 @@ class Portfolio:
             # Fallback to 1% of portfolio
             return (self.balance * 0.01) / price
     
+    def can_execute_trade(self, signal: Dict[str, Any], symbol: str) -> tuple[bool, str]:
+        """
+        Check if trade can be executed based on cooling period and position logic
+        Returns (can_execute, reason)
+        """
+        action = signal.get('action', 'unknown')
+        
+        # Check cooling period
+        if self.is_in_cooldown(symbol):
+            remaining = self.get_cooldown_remaining(symbol)
+            return False, f"Symbol in {remaining:.1f}min cooldown"
+        
+        # Check existing position
+        existing_position = self.get_position_for_symbol(symbol)
+        if existing_position:
+            existing_direction = existing_position['side']
+            
+            # If same direction, allow trade
+            if existing_direction == action:
+                return True, "Same direction trade allowed"
+            
+            # If opposite direction, need to close existing position first
+            else:
+                return False, f"Need to close existing {existing_direction} position first"
+        
+        # No existing position, trade allowed
+        return True, "No existing position"
+    
     def open_position(self, signal: Dict[str, Any], symbol: str, price: float):
         """Open a position based on trading signal"""
         strategy = signal.get('strategy', 'unknown')
+        
+        # Check if we can execute this trade
+        can_execute, reason = self.can_execute_trade(signal, symbol)
+        if not can_execute:
+            logger.info(f"📊 {symbol}: Cannot execute trade - {reason}")
+            return False
         
         # Check if we already have a position for this symbol and strategy
         if self.has_position_for_strategy(symbol, strategy):
@@ -103,12 +163,62 @@ class Portfolio:
             position_cost = price * size
             self.balance -= position_cost
             
+            # Update cooling period
+            self.signal_cooldown[symbol] = datetime.now()
+            
             logger.info(f"📈 Opened {signal['action']} on {symbol} with {strategy} strategy")
             logger.info(f"💰 Position cost: ${position_cost:.2f}, New balance: ${self.balance:.2f}")
+            logger.info(f"⏰ Cooling period started for {symbol}")
             return True
         except Exception as e:
             logger.error(f"❌ Failed to open position: {e}")
             return False
+    
+    def close_all_positions_for_symbol(self, symbol: str, price: float, reason: str = 'direction_change'):
+        """Close all positions for a symbol (for direction change)"""
+        closed_positions = []
+        
+        for (s, strategy) in list(self.positions.keys()):
+            if s == symbol:
+                pos = self.positions.pop((s, strategy))
+                
+                # Calculate P&L
+                if pos['side'] == 'buy':
+                    pnl = (price - pos['entry_price']) * pos['size']
+                else:  # sell position
+                    pnl = (pos['entry_price'] - price) * pos['size']
+                
+                # Add proceeds back to balance
+                position_value = price * pos['size']
+                self.balance += position_value
+                
+                # Add to trade history
+                self.trade_history.append({
+                    'symbol': symbol,
+                    'strategy': strategy,
+                    'pnl': pnl,
+                    'reason': reason
+                })
+                
+                closed_positions.append({
+                    'strategy': strategy,
+                    'side': pos['side'],
+                    'size': pos['size'],
+                    'pnl': pnl,
+                    'value': position_value
+                })
+                
+                logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f}")
+                logger.info(f"💰 P&L: ${pnl:.2f}, Position value: ${position_value:.2f}")
+        
+        if closed_positions:
+            total_pnl = sum(p['pnl'] for p in closed_positions)
+            total_value = sum(p['value'] for p in closed_positions)
+            logger.info(f"📊 Closed {len(closed_positions)} positions for {symbol}")
+            logger.info(f"💰 Total P&L: ${total_pnl:.2f}, Total value: ${total_value:.2f}")
+            logger.info(f"💼 New balance: ${self.balance:.2f}")
+        
+        return closed_positions
     
     def close_position(self, symbol: str, strategy: str, price: float, reason: str = 'manual'):
         """Close a specific position by symbol and strategy"""
