@@ -53,7 +53,7 @@ class UltraScalpStrategy:
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
             if (current_rsi < 40 and  # FIXED: 40 instead of 30
                 # FIXED: Much more permissive momentum requirements
-                (rsi_slope > -1.0 or price_change_1m > -0.5)):  # Either RSI not falling fast OR price not falling fast
+                (rsi_slope > -3.0 or price_change_1m > -1.5)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
@@ -69,7 +69,7 @@ class UltraScalpStrategy:
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
             elif (current_rsi > 60 and  # FIXED: 60 instead of 70
                   # FIXED: Much more permissive momentum requirements
-                  (rsi_slope < 1.0 or price_change_1m < 0.5)):  # Either RSI not rising fast OR price not rising fast
+                  (rsi_slope < 3.0 or price_change_1m < 1.5)):  # Either RSI not rising fast OR price not rising fast
                 
                 action = 'sell'
                 
