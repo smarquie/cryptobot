@@ -116,15 +116,13 @@ class SignalAggregator:
                     'weighted_confidence': signal['confidence'] * self.weights.get(strategy_name, 1.0)
                 })
                 
-                # Check if signal meets minimum confidence
-                min_confidence_key = f"{strategy_name.upper().replace('-', '_')}_MIN_CONFIDENCE"
-                min_confidence = getattr(BotConfig, min_confidence_key, BotConfig.MIN_CONFIDENCE)
-                
-                if signal['confidence'] >= min_confidence:
+                # FIXED: Don't filter by confidence threshold here - let individual strategies handle it
+                # Only add signals that have valid actions (not 'hold')
+                if signal['action'] != 'hold':
                     all_signals.append(signal)
                     print(f"✅ {strategy_name} generated valid signal: {signal['action']} (conf: {signal['confidence']:.3f})")
                 else:
-                    print(f"📊 {strategy_name} signal below threshold: {signal['confidence']:.3f} < {min_confidence}")
+                    print(f"📊 {strategy_name}: No signal (hold)")
                     
             except Exception as e:
                 print(f"❌ Error in {strategy_name} strategy: {e}")
