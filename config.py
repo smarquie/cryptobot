@@ -34,7 +34,12 @@ class BotConfig:
     # ==================== RISK MANAGEMENT ====================
     
     # Position sizing (percentage of available balance)
-    POSITION_SIZE_PERCENT = 10.0  # 10% of balance per trade
+    POSITION_SIZE_PERCENT = 25.0  # 25% of balance per trade = $2,500 for $10k portfolio
+    
+    # Position sizing limits
+    MIN_POSITION_VALUE = 1000.0  # Minimum $1,000 per trade
+    MAX_POSITION_VALUE = 3500.0  # Maximum $3,500 per trade (35% of $10k)
+    TARGET_POSITION_VALUE = 2500.0  # Target $2,500 per trade (25% of $10k)
     
     # Maximum total risk per trade (percentage)
     MAX_RISK_PERCENT = 2.0  # 2% max risk per trade
