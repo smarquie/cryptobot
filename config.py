@@ -48,6 +48,23 @@ class BotConfig:
     DEFAULT_STOP_LOSS_PERCENT = 0.5  # 0.5% stop loss
     DEFAULT_TAKE_PROFIT_PERCENT = 1.0  # 1.0% take profit
     
+    # DYNAMIC STOP LOSS & TAKE PROFIT - Can be adjusted while bot runs
+    DYNAMIC_STOP_LOSS_PERCENT = 0.5  # 0.5% stop loss
+    DYNAMIC_TAKE_PROFIT_PERCENT = 1.0  # 1.0% take profit
+    
+    # Strategy-specific dynamic settings
+    DYNAMIC_ULTRA_SCALP_SL = 0.25  # 0.25% stop loss
+    DYNAMIC_ULTRA_SCALP_TP = 0.50  # 0.50% take profit
+    
+    DYNAMIC_FAST_SCALP_SL = 0.30  # 0.30% stop loss
+    DYNAMIC_FAST_SCALP_TP = 0.60  # 0.60% take profit
+    
+    DYNAMIC_QUICK_MOMENTUM_SL = 0.40  # 0.40% stop loss
+    DYNAMIC_QUICK_MOMENTUM_TP = 0.80  # 0.80% take profit
+    
+    DYNAMIC_TTM_SQUEEZE_SL = 0.50  # 0.50% stop loss
+    DYNAMIC_TTM_SQUEEZE_TP = 1.00  # 1.00% take profit
+    
     # ==================== DATA COLLECTION ====================
     
     # Data collection settings (preserved from GitHub)
