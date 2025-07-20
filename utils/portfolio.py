@@ -31,7 +31,91 @@ class Portfolio:
         self.current_prices = {}  # Store current market prices
         self.signal_cooldown = {}  # symbol -> last_trade_time
         self.cooldown_minutes = 2  # 2-minute cooling period
+        
+        # DYNAMIC POSITION SIZING - Can be adjusted while bot runs
+        self.dynamic_position_size_percent = BotConfig.POSITION_SIZE_PERCENT
+        self.dynamic_min_position_value = BotConfig.MIN_POSITION_VALUE
+        self.dynamic_max_position_value = BotConfig.MAX_POSITION_VALUE
+        self.dynamic_target_position_value = BotConfig.TARGET_POSITION_VALUE
+        
         logger.info(f"💼 Portfolio initialized with ${self.balance:,.2f}")
+        logger.info(f"💰 Dynamic position sizing: {self.dynamic_position_size_percent}% (${self.dynamic_target_position_value:,.2f})")
+    
+    def update_position_sizing(self, 
+                             position_size_percent: float = None,
+                             min_position_value: float = None,
+                             max_position_value: float = None,
+                             target_position_value: float = None):
+        """
+        Update position sizing parameters dynamically while bot runs
+        """
+        if position_size_percent is not None:
+            self.dynamic_position_size_percent = position_size_percent
+            logger.info(f"💰 Updated position size percent: {position_size_percent}%")
+        
+        if min_position_value is not None:
+            self.dynamic_min_position_value = min_position_value
+            logger.info(f"💰 Updated min position value: ${min_position_value:,.2f}")
+        
+        if max_position_value is not None:
+            self.dynamic_max_position_value = max_position_value
+            logger.info(f"💰 Updated max position value: ${max_position_value:,.2f}")
+        
+        if target_position_value is not None:
+            self.dynamic_target_position_value = target_position_value
+            logger.info(f"💰 Updated target position value: ${target_position_value:,.2f}")
+        
+        # Log current sizing
+        logger.info(f"💰 Current dynamic sizing: {self.dynamic_position_size_percent}% = ${self.balance * (self.dynamic_position_size_percent / 100):,.2f}")
+    
+    def get_position_sizing_info(self) -> Dict[str, float]:
+        """Get current position sizing parameters"""
+        return {
+            'position_size_percent': self.dynamic_position_size_percent,
+            'min_position_value': self.dynamic_min_position_value,
+            'max_position_value': self.dynamic_max_position_value,
+            'target_position_value': self.dynamic_target_position_value,
+            'current_balance': self.balance,
+            'current_target_value': self.balance * (self.dynamic_position_size_percent / 100)
+        }
+    
+    @classmethod
+    def update_global_sizing(cls, 
+                           position_size_percent: float = None,
+                           min_position_value: float = None,
+                           max_position_value: float = None,
+                           target_position_value: float = None):
+        """
+        Update global position sizing parameters that will be used by new portfolio instances
+        This can be called from Colab cells to change sizing for the entire bot
+        """
+        if position_size_percent is not None:
+            cls.dynamic_position_size_percent = position_size_percent
+            print(f"💰 Updated global position size percent: {position_size_percent}%")
+        
+        if min_position_value is not None:
+            cls.dynamic_min_position_value = min_position_value
+            print(f"💰 Updated global min position value: ${min_position_value:,.2f}")
+        
+        if max_position_value is not None:
+            cls.dynamic_max_position_value = max_position_value
+            print(f"💰 Updated global max position value: ${max_position_value:,.2f}")
+        
+        if target_position_value is not None:
+            cls.dynamic_target_position_value = target_position_value
+            print(f"💰 Updated global target position value: ${target_position_value:,.2f}")
+        
+        print(f"✅ Global position sizing updated successfully!")
+    
+    @classmethod
+    def get_global_sizing_info(cls) -> Dict[str, float]:
+        """Get current global position sizing parameters"""
+        return {
+            'position_size_percent': getattr(cls, 'dynamic_position_size_percent', 25.0),
+            'min_position_value': getattr(cls, 'dynamic_min_position_value', 1000.0),
+            'max_position_value': getattr(cls, 'dynamic_max_position_value', 3500.0),
+            'target_position_value': getattr(cls, 'dynamic_target_position_value', 2500.0)
+        }
     
     def has_position(self, symbol: str) -> bool:
         """Check if we have ANY position for a symbol (for backward compatibility)"""
@@ -74,10 +158,10 @@ class Portfolio:
     def calculate_position_size(self, signal: Dict[str, Any], price: float) -> float:
         """Calculate position size based on signal and current price"""
         try:
-            # Use config values for position sizing
-            target_position_value = self.balance * (BotConfig.POSITION_SIZE_PERCENT / 100)
-            min_position_value = BotConfig.MIN_POSITION_VALUE
-            max_position_value = BotConfig.MAX_POSITION_VALUE
+            # Use DYNAMIC config values for position sizing (can be changed while bot runs)
+            target_position_value = self.balance * (self.dynamic_position_size_percent / 100)
+            min_position_value = self.dynamic_min_position_value
+            max_position_value = self.dynamic_max_position_value
             
             # Calculate position size based on target value
             position_size = target_position_value / price
@@ -94,7 +178,7 @@ class Portfolio:
             actual_position_value = position_size * price
             
             logger.info(f"💰 Position sizing for {signal.get('symbol', 'unknown')}:")
-            logger.info(f"   Target: ${target_position_value:.2f} ({BotConfig.POSITION_SIZE_PERCENT}% of portfolio)")
+            logger.info(f"   Target: ${target_position_value:.2f} ({self.dynamic_position_size_percent}% of portfolio)")
             logger.info(f"   Actual: ${actual_position_value:.2f}")
             logger.info(f"   Size: {position_size:.6f} units @ ${price:.2f}")
             
@@ -102,8 +186,8 @@ class Portfolio:
             
         except Exception as e:
             logger.error(f"❌ Error calculating position size: {e}")
-            # Fallback to config percentage
-            return (self.balance * (BotConfig.POSITION_SIZE_PERCENT / 100)) / price
+            # Fallback to dynamic percentage
+            return (self.balance * (self.dynamic_position_size_percent / 100)) / price
     
     def can_execute_trade(self, signal: Dict[str, Any], symbol: str) -> tuple[bool, str]:
         """
