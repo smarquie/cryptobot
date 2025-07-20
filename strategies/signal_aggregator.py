@@ -15,7 +15,8 @@ class SignalAggregator:
             'Quick-Momentum': QuickMomentumStrategy(),
             'TTM-Squeeze': TTMSqueezeStrategy()
         }
-        self.weights = BotConfig.STRATEGY_WEIGHTS
+        # FIXED: Don't access weights during __init__ to avoid import issues
+        self._weights = None
         
         # Strategy-specific timeframes and timelines
         self.strategy_configs = {
@@ -48,10 +49,26 @@ class SignalAggregator:
                 'description': 'Squeeze breakout with 1-hour timeframe'
             }
         }
+    
+    @property
+    def weights(self):
+        """Lazy-load weights to avoid import issues"""
+        if self._weights is None:
+            try:
+                self._weights = BotConfig.STRATEGY_WEIGHTS
+            except AttributeError:
+                # Fallback weights if config not available
+                self._weights = {
+                    "Ultra-Scalp": 0.8,
+                    "Fast-Scalp": 0.9,
+                    "Quick-Momentum": 1.0,
+                    "TTM-Squeeze": 1.1
+                }
+        return self._weights
 
     def aggregate(self, market_data: Dict, symbol: str) -> List[Dict]:
         """
-        Run ALL strategies and return signals only when 3+ strategies agree on direction
+        Run ALL strategies and return signals only when 2+ strategies agree on direction
         Returns list of signals that meet the agreement threshold
         """
         all_signals = []
@@ -119,13 +136,13 @@ class SignalAggregator:
 
     def _apply_agreement_logic(self, signals: List[Dict], symbol: str) -> List[Dict]:
         """
-        Apply 3-strategy agreement logic:
-        - Only return signals when 3+ strategies agree on direction
+        Apply 2-strategy agreement logic (changed from 3+):
+        - Only return signals when 2+ strategies agree on direction
         - Group by action (buy/sell)
         - Return highest confidence signals for agreed direction
         """
-        if len(signals) < 3:
-            print(f"📊 {symbol}: Only {len(signals)} valid signals (need 3+ for agreement)")
+        if len(signals) < 2:
+            print(f"📊 {symbol}: Only {len(signals)} valid signals (need 2+ for agreement)")
             return []
         
         # Group signals by action
@@ -134,17 +151,17 @@ class SignalAggregator:
         
         print(f"📊 {symbol}: {len(buy_signals)} buy signals, {len(sell_signals)} sell signals")
         
-        # Check for 3+ strategy agreement
-        if len(buy_signals) >= 3:
-            print(f"✅ {symbol}: 3+ strategies agree on BUY direction")
-            # Return top 3 buy signals by confidence
-            return sorted(buy_signals, key=lambda x: x['confidence'], reverse=True)[:3]
-        elif len(sell_signals) >= 3:
-            print(f"✅ {symbol}: 3+ strategies agree on SELL direction")
-            # Return top 3 sell signals by confidence
-            return sorted(sell_signals, key=lambda x: x['confidence'], reverse=True)[:3]
+        # Check for 2+ strategy agreement (changed from 3+)
+        if len(buy_signals) >= 2:
+            print(f"✅ {symbol}: 2+ strategies agree on BUY direction")
+            # Return top 2 buy signals by confidence
+            return sorted(buy_signals, key=lambda x: x['confidence'], reverse=True)[:2]
+        elif len(sell_signals) >= 2:
+            print(f"✅ {symbol}: 2+ strategies agree on SELL direction")
+            # Return top 2 sell signals by confidence
+            return sorted(sell_signals, key=lambda x: x['confidence'], reverse=True)[:2]
         else:
-            print(f"📊 {symbol}: No 3-strategy agreement (buy: {len(buy_signals)}, sell: {len(sell_signals)})")
+            print(f"📊 {symbol}: No 2-strategy agreement (buy: {len(buy_signals)}, sell: {len(sell_signals)})")
             return []
 
     def get_strategy_timeline_info(self, strategy_name: str) -> Dict:
