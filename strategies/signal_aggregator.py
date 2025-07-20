@@ -51,8 +51,8 @@ class SignalAggregator:
 
     def aggregate(self, market_data: Dict, symbol: str) -> List[Dict]:
         """
-        Run ALL strategies and return ALL valid signals
-        Returns list of signals that can be executed simultaneously
+        Run ALL strategies and return signals only when 3+ strategies agree on direction
+        Returns list of signals that meet the agreement threshold
         """
         all_signals = []
         
@@ -114,7 +114,38 @@ class SignalAggregator:
                 import traceback
                 traceback.print_exc()
         
-        return all_signals
+        # NEW: Apply 3-strategy agreement logic
+        return self._apply_agreement_logic(all_signals, symbol)
+
+    def _apply_agreement_logic(self, signals: List[Dict], symbol: str) -> List[Dict]:
+        """
+        Apply 3-strategy agreement logic:
+        - Only return signals when 3+ strategies agree on direction
+        - Group by action (buy/sell)
+        - Return highest confidence signals for agreed direction
+        """
+        if len(signals) < 3:
+            print(f"📊 {symbol}: Only {len(signals)} valid signals (need 3+ for agreement)")
+            return []
+        
+        # Group signals by action
+        buy_signals = [s for s in signals if s['action'] == 'buy']
+        sell_signals = [s for s in signals if s['action'] == 'sell']
+        
+        print(f"📊 {symbol}: {len(buy_signals)} buy signals, {len(sell_signals)} sell signals")
+        
+        # Check for 3+ strategy agreement
+        if len(buy_signals) >= 3:
+            print(f"✅ {symbol}: 3+ strategies agree on BUY direction")
+            # Return top 3 buy signals by confidence
+            return sorted(buy_signals, key=lambda x: x['confidence'], reverse=True)[:3]
+        elif len(sell_signals) >= 3:
+            print(f"✅ {symbol}: 3+ strategies agree on SELL direction")
+            # Return top 3 sell signals by confidence
+            return sorted(sell_signals, key=lambda x: x['confidence'], reverse=True)[:3]
+        else:
+            print(f"📊 {symbol}: No 3-strategy agreement (buy: {len(buy_signals)}, sell: {len(sell_signals)})")
+            return []
 
     def get_strategy_timeline_info(self, strategy_name: str) -> Dict:
         """Get timeline information for a specific strategy"""
