@@ -64,11 +64,9 @@ class TTMSqueezeStrategy:
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 55 and  # FIXED: 55 instead of 45
-                # FIXED: Much more permissive squeeze requirements
-                (squeeze_on or bb_position < 0.7) and  # Either in squeeze OR not at upper BB
+            if (current_rsi < 45 and  # FIXED: 45 instead of 35
                 # FIXED: Much more permissive momentum requirements
-                (rsi_slope > -2.0 or price_change_5m > -1.5)):  # Either RSI not falling fast OR price not falling fast
+                (rsi_slope > -3.0 or price_change_5m > -2.0)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
