@@ -125,12 +125,34 @@ class TradingEngine:
                 
                 # Process each signal from different strategies
                 for signal in signals:
-                    # FIXED: Check if we already have a position for THIS SPECIFIC STRATEGY
-                    strategy_name = signal.get('strategy', 'unknown')
-                    if self.portfolio.has_position_for_strategy(symbol, strategy_name):
-                        if self.cycle_count % 10 == 0:  # Log every 10 cycles to avoid spam
-                            logger.info(f"📊 {symbol}: Already have {strategy_name} position - skipping")
-                        continue
+                    # Check if we can execute this trade
+                    can_execute, reason = self.portfolio.can_execute_trade(signal, symbol)
+                    
+                    if not can_execute:
+                        if "Need to close existing" in reason:
+                            # Handle direction change: close existing positions first
+                            current_price = market_data.get(symbol, 0)
+                            if current_price > 0:
+                                logger.info(f"🔄 {symbol}: Direction change detected - closing existing positions")
+                                closed_positions = self.portfolio.close_all_positions_for_symbol(symbol, current_price, 'direction_change')
+                                
+                                if closed_positions:
+                                    logger.info(f"✅ {symbol}: Closed {len(closed_positions)} positions, now can execute new trade")
+                                    # Continue with trade execution below
+                                else:
+                                    logger.warning(f"⚠️ {symbol}: Failed to close existing positions")
+                                    continue
+                            else:
+                                logger.warning(f"⚠️ {symbol}: No current price for position closing")
+                                continue
+                        elif "cooldown" in reason:
+                            # In cooling period, skip this trade
+                            if self.cycle_count % 5 == 0:  # Log every 5 cycles to avoid spam
+                                logger.info(f"📊 {symbol}: {reason}")
+                            continue
+                        else:
+                            logger.info(f"📊 {symbol}: {reason}")
+                            continue
                     
                     # Validate signal is a dictionary
                     if not isinstance(signal, dict):
