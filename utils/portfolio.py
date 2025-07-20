@@ -74,31 +74,36 @@ class Portfolio:
     def calculate_position_size(self, signal: Dict[str, Any], price: float) -> float:
         """Calculate position size based on signal and current price"""
         try:
-            # Use a simple position sizing strategy
-            # Risk 1% of portfolio per trade
-            risk_amount = self.balance * 0.01
+            # Use config values for position sizing
+            target_position_value = self.balance * (BotConfig.POSITION_SIZE_PERCENT / 100)
+            min_position_value = BotConfig.MIN_POSITION_VALUE
+            max_position_value = BotConfig.MAX_POSITION_VALUE
             
-            # Calculate position size based on stop loss
-            if 'stop_loss' in signal and signal['stop_loss'] > 0:
-                stop_loss_distance = abs(price - signal['stop_loss'])
-                if stop_loss_distance > 0:
-                    position_size = risk_amount / stop_loss_distance
-                else:
-                    position_size = risk_amount / (price * 0.01)  # 1% of price as fallback
-            else:
-                # Default to 1% of portfolio value
-                position_size = (self.balance * 0.01) / price
+            # Calculate position size based on target value
+            position_size = target_position_value / price
             
-            # Ensure position size is reasonable
-            max_position = self.balance * 0.1 / price  # Max 10% of portfolio
-            position_size = min(position_size, max_position)
+            # Ensure minimum trade size
+            min_position_size = min_position_value / price
+            position_size = max(position_size, min_position_size)
             
-            return max(0.001, position_size)  # Minimum 0.001
+            # Ensure maximum trade size
+            max_position_size = max_position_value / price
+            position_size = min(position_size, max_position_size)
+            
+            # Calculate actual position value for logging
+            actual_position_value = position_size * price
+            
+            logger.info(f"💰 Position sizing for {signal.get('symbol', 'unknown')}:")
+            logger.info(f"   Target: ${target_position_value:.2f} ({BotConfig.POSITION_SIZE_PERCENT}% of portfolio)")
+            logger.info(f"   Actual: ${actual_position_value:.2f}")
+            logger.info(f"   Size: {position_size:.6f} units @ ${price:.2f}")
+            
+            return position_size
             
         except Exception as e:
             logger.error(f"❌ Error calculating position size: {e}")
-            # Fallback to 1% of portfolio
-            return (self.balance * 0.01) / price
+            # Fallback to config percentage
+            return (self.balance * (BotConfig.POSITION_SIZE_PERCENT / 100)) / price
     
     def can_execute_trade(self, signal: Dict[str, Any], symbol: str) -> tuple[bool, str]:
         """
