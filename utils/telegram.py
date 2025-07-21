@@ -140,6 +140,13 @@ class TelegramNotifier:
             "TTM-Squeeze": "🎯"
         }.get(strategy, "📊")
 
+        # Cumulative stats
+        win_rate = portfolio_summary.get('win_rate', 0.0) * 100
+        loss_rate = portfolio_summary.get('loss_rate', 0.0) * 100
+        avg_win = portfolio_summary.get('avg_win', 0.0)
+        avg_loss = portfolio_summary.get('avg_loss', 0.0)
+        trade_count = portfolio_summary.get('trade_count', 0)
+
         message = f"""
 {profit_emoji} <b>POSITION CLOSED</b>
 
@@ -157,9 +164,14 @@ class TelegramNotifier:
 
 📊 <b>PORTFOLIO STATUS:</b>
 💰 <b>Total Value:</b> ${portfolio_summary['total_value']:,.2f}
-📈 <b>Total Return:</b> {portfolio_summary['total_return_pct']:+.2f}%
+📈 <b>Total Return:</b> {portfolio_summary.get('total_return_pct', 0):+.2f}%
 📋 <b>Open Positions:</b> {portfolio_summary['open_positions']}
-🎯 <b>Win Rate:</b> {portfolio_summary['win_rate']:.1f}%
+
+🎯 <b>Win Rate:</b> {win_rate:.1f}%
+💚 <b>Avg Win:</b> ${avg_win:,.2f}
+❤️ <b>Avg Loss:</b> ${avg_loss:,.2f}
+📊 <b>Win Trades:</b> {win_rate:.1f}% | <b>Loss Trades:</b> {loss_rate:.1f}%
+🔢 <b>Total Trades:</b> {trade_count}
 
 ⏰ <b>Time:</b> {datetime.now().strftime('%H:%M:%S')}
         """
