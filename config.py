@@ -75,45 +75,62 @@ class BotConfig:
 
     
     # ==================== STRATEGY PARAMETERS ====================
-    
-    # Ultra-Scalp Strategy
+
+    # Ultra-Scalp Strategy Parameters
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 40      # More permissive than 30
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 60     # More permissive than 70
     ULTRA_SCALP_RSI_PERIOD = 7
     ULTRA_SCALP_SMA_PERIOD = 5
-    ULTRA_SCALP_RSI_OVERSOLD = 40  # FIXED: More permissive (was 30)
-    ULTRA_SCALP_RSI_OVERBOUGHT = 60  # FIXED: More permissive (was 70)
-    ULTRA_SCALP_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
-    ULTRA_SCALP_MAX_HOLD_SECONDS = 600  # 10 minutes
-    
-    # Fast-Scalp Strategy
-    FAST_SCALP_RSI_PERIOD = 9
-    FAST_SCALP_EMA_FAST = 8
-    FAST_SCALP_EMA_SLOW = 21
-    FAST_SCALP_RSI_OVERSOLD = 45  # FIXED: More permissive (was 35)
-    FAST_SCALP_RSI_OVERBOUGHT = 55  # FIXED: More permissive (was 65)
-    FAST_SCALP_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
-    FAST_SCALP_MAX_HOLD_SECONDS = 900  # 15 minutes
-    
-    # Quick-Momentum Strategy
-    QUICK_MOMENTUM_RSI_PERIOD = 11
-    QUICK_MOMENTUM_STOCH_PERIOD = 14
-    QUICK_MOMENTUM_MACD_FAST = 12
-    QUICK_MOMENTUM_MACD_SLOW = 26
-    QUICK_MOMENTUM_MACD_SIGNAL = 9
-    QUICK_MOMENTUM_RSI_OVERSOLD = 50  # FIXED: More permissive (was 40)
-    QUICK_MOMENTUM_RSI_OVERBOUGHT = 50  # FIXED: More permissive (was 60)
-    QUICK_MOMENTUM_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
-    QUICK_MOMENTUM_MAX_HOLD_SECONDS = 1200  # 20 minutes
-    
-    # TTM-Squeeze Strategy
-    TTM_SQUEEZE_RSI_PERIOD = 14
-    TTM_SQUEEZE_BB_PERIOD = 20
-    TTM_SQUEEZE_BB_STD = 2.0
-    TTM_SQUEEZE_KC_PERIOD = 20
-    TTM_SQUEEZE_KC_MULTIPLIER = 1.5
-    TTM_SQUEEZE_RSI_OVERSOLD = 55  # FIXED: More permissive (was 45)
-    TTM_SQUEEZE_RSI_OVERBOUGHT = 45  # FIXED: More permissive (was 55)
-    TTM_SQUEEZE_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
-    TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # 30 minutes
+    ULTRA_SCALP_BASE_CONFIDENCE = 0.5
+    ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 10
+    ULTRA_SCALP_MIN_CONFIDENCE = 0.2
+    ULTRA_SCALP_PROFIT_TARGET = 0.0040       # 0.40% profit target
+    ULTRA_SCALP_STOP_LOSS = 0.0020           # 0.20% stop loss
+    ULTRA_SCALP_MAX_HOLD_SECONDS = 600       # 10 minutes
+
+    # Fast-Scalp Strategy Parameters
+    FAST_SCALP_RSI_BUY_THRESHOLD = 40        # More permissive than 30
+    FAST_SCALP_RSI_SELL_THRESHOLD = 60       # More permissive than 70
+    FAST_SCALP_MACD_FAST = 5
+    FAST_SCALP_MACD_SLOW = 10
+    FAST_SCALP_MACD_SIGNAL = 4
+    FAST_SCALP_VOLUME_MULTIPLIER = 1.05      # More permissive than 1.10
+    FAST_SCALP_VOLUME_PERIOD = 10
+    FAST_SCALP_BASE_CONFIDENCE = 0.6
+    FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
+    FAST_SCALP_MIN_CONFIDENCE = 0.2          # More permissive than 0.5
+    FAST_SCALP_PROFIT_TARGET = 0.0040
+    FAST_SCALP_STOP_LOSS = 0.0020
+    FAST_SCALP_MAX_HOLD_SECONDS = 900        # 15 minutes
+
+    # Quick-Momentum Strategy Parameters
+    MOMENTUM_RSI_BUY_THRESHOLD = 55           # More permissive than 60
+    MOMENTUM_RSI_SELL_THRESHOLD = 45          # More permissive than 40
+    MOMENTUM_FAST_MA_PERIOD = 3
+    MOMENTUM_SLOW_MA_PERIOD = 8
+    MOMENTUM_MIN_PRICE_CHANGE = 0.02          # More permissive than 0.05%
+    MOMENTUM_TREND_PERIODS = 3
+    MOMENTUM_BASE_CONFIDENCE = 0.5
+    MOMENTUM_TREND_CONFIDENCE_BONUS = 0.3
+    MOMENTUM_MIN_CONFIDENCE = 0.2             # More permissive than 0.4
+    MOMENTUM_PROFIT_TARGET = 0.0040
+    MOMENTUM_STOP_LOSS = 0.002
+    MOMENTUM_MAX_HOLD_SECONDS = 1800          # 30 minutes
+
+    # TTM-Squeeze Strategy Parameters
+    TTM_BB_PERIOD = 20
+    TTM_BB_STDDEV = 2.0
+    TTM_KC_PERIOD = 20
+    TTM_KC_ATR_MULTIPLIER = 1.5
+    TTM_MOMENTUM_PERIOD = 20
+    TTM_MIN_SQUEEZE_PERIODS = 2               # More permissive than 3
+    TTM_MOMENTUM_THRESHOLD = 0.3              # More permissive than 0.5
+    TTM_BASE_CONFIDENCE = 0.6
+    TTM_SQUEEZE_CONFIDENCE_BONUS = 0.2
+    TTM_MIN_CONFIDENCE = 0.2                  # More permissive than 0.5
+    TTM_PROFIT_TARGET = 0.002
+    TTM_STOP_LOSS = 0.0015
+    TTM_MAX_HOLD_SECONDS = 1200               # 20 minutes
     
     # ==================== VOLUME ANALYSIS ====================
     
