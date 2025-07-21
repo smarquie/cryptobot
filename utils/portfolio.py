@@ -326,12 +326,19 @@ class Portfolio:
         position_value = price * pos['size']
         self.balance += position_value
         
-        # Add to trade history
+        # Add to trade history with complete information
         self.trade_history.append({
             'symbol': symbol,
             'strategy': strategy,
+            'side': pos['side'],
+            'size': pos['size'],
+            'entry_price': pos['entry_price'],
+            'close_price': price,
             'pnl': pnl,
-            'reason': reason
+            'reason': reason,
+            'entry_time': pos.get('entry_time'),
+            'stop_loss': pos.get('stop_loss'),
+            'take_profit': pos.get('take_profit')
         })
         
         logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f}")
@@ -363,13 +370,37 @@ class Portfolio:
         initial_balance = BotConfig.INITIAL_BALANCE
         total_return_pct = ((total_value - initial_balance) / initial_balance * 100) if initial_balance > 0 else 0.0
         
-        # Win/loss stats
-        win_trades = [p for p in self.trade_history if p['pnl'] > 0]
-        loss_trades = [p for p in self.trade_history if p['pnl'] < 0]
-        win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0.0
-        loss_rate = len(loss_trades) / len(self.trade_history) if self.trade_history else 0.0
-        avg_win = sum(p['pnl'] for p in win_trades) / len(win_trades) if win_trades else 0.0
-        avg_loss = sum(p['pnl'] for p in loss_trades) / len(loss_trades) if loss_trades else 0.0
+        # Win/loss stats - Improved calculation
+        total_trades = len(self.trade_history)
+        if total_trades > 0:
+            # Count winning trades (positive P&L)
+            win_trades = [p for p in self.trade_history if p['pnl'] > 0]
+            # Count losing trades (negative P&L) 
+            loss_trades = [p for p in self.trade_history if p['pnl'] < 0]
+            # Count breakeven trades (zero P&L)
+            breakeven_trades = [p for p in self.trade_history if p['pnl'] == 0]
+            
+            # Calculate rates
+            win_rate = len(win_trades) / total_trades
+            loss_rate = len(loss_trades) / total_trades
+            breakeven_rate = len(breakeven_trades) / total_trades
+            
+            # Calculate averages
+            avg_win = sum(p['pnl'] for p in win_trades) / len(win_trades) if win_trades else 0.0
+            avg_loss = sum(p['pnl'] for p in loss_trades) / len(loss_trades) if loss_trades else 0.0
+            
+            logger.info(f"📊 Trade Stats: {len(win_trades)} wins, {len(loss_trades)} losses, {len(breakeven_trades)} breakeven out of {total_trades} total")
+            logger.info(f"📊 Win Rate: {win_rate:.1%}, Loss Rate: {loss_rate:.1%}, Breakeven Rate: {breakeven_rate:.1%}")
+            
+            # Debug: Show recent trades
+            if len(self.trade_history) > 0:
+                recent_trades = self.trade_history[-5:]  # Last 5 trades
+                logger.info(f"📊 Recent trades: {recent_trades}")
+        else:
+            win_rate = 0.0
+            loss_rate = 0.0
+            avg_win = 0.0
+            avg_loss = 0.0
         return {
             'balance': self.balance,
             'total_value': total_value,
