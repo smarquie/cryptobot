@@ -122,7 +122,7 @@ class TelegramNotifier:
 💰 <b>Total Value:</b> ${portfolio_summary['total_value']:,.2f}
 📈 <b>Total Return:</b> {portfolio_summary['total_return_pct']:+.2f}%
 📋 <b>Open Positions:</b> {portfolio_summary['open_positions']}
-🎯 <b>Win Rate:</b> {portfolio_summary['win_rate']:.1f}%
+🎯 <b>Win Rate:</b> {portfolio_summary['win_rate']*100:.1f}%
 
 ⏰ <b>Time:</b> {datetime.now().strftime('%H:%M:%S')}
         """
