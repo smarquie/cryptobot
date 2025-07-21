@@ -18,35 +18,35 @@ class SignalAggregator:
         # FIXED: Don't access weights during __init__ to avoid import issues
         self._weights = None
         
-        # Strategy-specific timeframes and timelines
+        # Strategy-specific configurations (all use 1-minute data)
         self.strategy_configs = {
             'Ultra-Scalp': {
                 'timeframe': '1m',
-                'lookback': 10,
+                'lookback': 10,  # Needs 10 minutes of 1-minute data
                 'max_hold_time': 600,  # 10 minutes
                 'target_hold': '10 minutes',
-                'description': 'Ultra-fast scalping with 1-minute timeframe'
+                'description': 'Ultra-fast scalping with 1-minute data'
             },
             'Fast-Scalp': {
-                'timeframe': '5m',
-                'lookback': 20,
+                'timeframe': '1m',
+                'lookback': 15,  # Needs 15 minutes of 1-minute data
                 'max_hold_time': 1800,  # 30 minutes
                 'target_hold': '30 minutes',
-                'description': 'Fast scalping with 5-minute timeframe'
+                'description': 'Fast scalping with 1-minute data'
             },
             'Quick-Momentum': {
-                'timeframe': '15m',
-                'lookback': 40,
+                'timeframe': '1m',
+                'lookback': 20,  # Needs 20 minutes of 1-minute data
                 'max_hold_time': 3600,  # 1 hour
                 'target_hold': '1 hour',
-                'description': 'Momentum trading with 15-minute timeframe'
+                'description': 'Momentum trading with 1-minute data'
             },
             'TTM-Squeeze': {
-                'timeframe': '1h',
-                'lookback': 24,
+                'timeframe': '1m',
+                'lookback': 20,  # Needs 20 minutes of 1-minute data
                 'max_hold_time': 14400,  # 4 hours
                 'target_hold': '4 hours',
-                'description': 'Squeeze breakout with 1-hour timeframe'
+                'description': 'Squeeze breakout with 1-minute data'
             }
         }
     
@@ -75,21 +75,27 @@ class SignalAggregator:
         
         for strategy_name, strategy in self.strategies.items():
             try:
-                # Get strategy-specific timeframe
+                # All strategies use 1-minute data
                 config = self.strategy_configs[strategy_name]
-                timeframe = config['timeframe']
                 lookback = config['lookback']
                 
-                # Get data for this strategy's timeframe
-                df = market_data.get(f"{symbol}_{timeframe}")
+                # Get 1-minute data for this strategy
+                df = market_data.get(f"{symbol}_1m")
                 if df is None or df.empty:
-                    print(f"⚠️ No data for {symbol}_{timeframe}")
+                    print(f"⚠️ No 1m data for {symbol}")
+                    continue
+                
+                # Use only the required number of recent data points
+                if len(df) >= lookback:
+                    df = df.tail(lookback)
+                else:
+                    print(f"⚠️ Insufficient 1m data for {strategy_name}: {len(df)} < {lookback}")
                     continue
                 
                 # Ensure DataFrame has required columns
                 required_columns = ['open', 'high', 'low', 'close', 'volume']
                 if not all(col in df.columns for col in required_columns):
-                    print(f"⚠️ Missing required columns for {symbol}_{timeframe}")
+                    print(f"⚠️ Missing required columns for {symbol}_1m")
                     continue
                 
                 # Run strategy analysis
@@ -108,7 +114,7 @@ class SignalAggregator:
                 
                 # Add strategy-specific timeline information
                 signal.update({
-                    'timeframe': timeframe,
+                    'timeframe': '1m',  # All strategies use 1-minute data
                     'lookback_periods': lookback,
                     'max_hold_time': config['max_hold_time'],
                     'target_hold': config['target_hold'],
@@ -134,13 +140,13 @@ class SignalAggregator:
 
     def _apply_agreement_logic(self, signals: List[Dict], symbol: str) -> List[Dict]:
         """
-        Apply 2-strategy agreement logic (changed from 3+):
-        - Only return signals when 2+ strategies agree on direction
+        Apply 1-strategy agreement logic (changed from 2+):
+        - Return signals when 1+ strategies generate signals
         - Group by action (buy/sell)
-        - Return highest confidence signals for agreed direction
+        - Return highest confidence signals for each direction
         """
-        if len(signals) < 2:
-            print(f"📊 {symbol}: Only {len(signals)} valid signals (need 2+ for agreement)")
+        if len(signals) < 1:
+            print(f"📊 {symbol}: Only {len(signals)} valid signals (need 1+ for agreement)")
             return []
         
         # Group signals by action
@@ -149,17 +155,17 @@ class SignalAggregator:
         
         print(f"📊 {symbol}: {len(buy_signals)} buy signals, {len(sell_signals)} sell signals")
         
-        # Check for 2+ strategy agreement (changed from 3+)
-        if len(buy_signals) >= 2:
-            print(f"✅ {symbol}: 2+ strategies agree on BUY direction")
-            # Return top 2 buy signals by confidence
-            return sorted(buy_signals, key=lambda x: x['confidence'], reverse=True)[:2]
-        elif len(sell_signals) >= 2:
-            print(f"✅ {symbol}: 2+ strategies agree on SELL direction")
-            # Return top 2 sell signals by confidence
-            return sorted(sell_signals, key=lambda x: x['confidence'], reverse=True)[:2]
+        # Check for 1+ strategy agreement (changed from 2+)
+        if len(buy_signals) >= 1:
+            print(f"✅ {symbol}: 1+ strategies agree on BUY direction")
+            # Return top buy signal by confidence
+            return sorted(buy_signals, key=lambda x: x['confidence'], reverse=True)[:1]
+        elif len(sell_signals) >= 1:
+            print(f"✅ {symbol}: 1+ strategies agree on SELL direction")
+            # Return top sell signal by confidence
+            return sorted(sell_signals, key=lambda x: x['confidence'], reverse=True)[:1]
         else:
-            print(f"📊 {symbol}: No 2-strategy agreement (buy: {len(buy_signals)}, sell: {len(sell_signals)})")
+            print(f"📊 {symbol}: No 1-strategy agreement (buy: {len(buy_signals)}, sell: {len(sell_signals)})")
             return []
 
     def get_strategy_timeline_info(self, strategy_name: str) -> Dict:
@@ -169,3 +175,4 @@ class SignalAggregator:
     def get_all_timelines(self) -> Dict:
         """Get timeline information for all strategies"""
         return self.strategy_configs
+
