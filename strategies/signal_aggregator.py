@@ -23,29 +23,29 @@ class SignalAggregator:
             'Ultra-Scalp': {
                 'timeframe': '1m',
                 'lookback': 10,  # Needs 10 minutes of 1-minute data
-                'max_hold_time': 600,  # 10 minutes
-                'target_hold': '10 minutes',
+                'max_hold_time': BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Ultra-fast scalping with 1-minute data'
             },
             'Fast-Scalp': {
                 'timeframe': '1m',
                 'lookback': 15,  # Needs 15 minutes of 1-minute data
-                'max_hold_time': 1800,  # 30 minutes
-                'target_hold': '30 minutes',
+                'max_hold_time': BotConfig.FAST_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.FAST_SCALP_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Fast scalping with 1-minute data'
             },
             'Quick-Momentum': {
                 'timeframe': '1m',
                 'lookback': 20,  # Needs 20 minutes of 1-minute data
-                'max_hold_time': 3600,  # 1 hour
-                'target_hold': '1 hour',
+                'max_hold_time': BotConfig.MOMENTUM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Momentum trading with 1-minute data'
             },
             'TTM-Squeeze': {
                 'timeframe': '1m',
                 'lookback': 20,  # Needs 20 minutes of 1-minute data
-                'max_hold_time': 14400,  # 4 hours
-                'target_hold': '4 hours',
+                'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Squeeze breakout with 1-minute data'
             }
         }
@@ -175,4 +175,3 @@ class SignalAggregator:
     def get_all_timelines(self) -> Dict:
         """Get timeline information for all strategies"""
         return self.strategy_configs
-
