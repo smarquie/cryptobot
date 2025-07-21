@@ -358,6 +358,11 @@ class Portfolio:
                 logger.debug(f"📊 {symbol} ({strategy}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
         exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for (symbol, strategy), pos in self.positions.items())
         exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
+        
+        # Calculate total return percentage
+        initial_balance = BotConfig.INITIAL_BALANCE
+        total_return_pct = ((total_value - initial_balance) / initial_balance * 100) if initial_balance > 0 else 0.0
+        
         # Win/loss stats
         win_trades = [p for p in self.trade_history if p['pnl'] > 0]
         loss_trades = [p for p in self.trade_history if p['pnl'] < 0]
@@ -371,6 +376,7 @@ class Portfolio:
             'open_positions': len(self.positions),
             'unrealized_pnl': total_unrealized_pnl,
             'exposure_pct': exposure_pct,
+            'total_return_pct': total_return_pct,
             'win_rate': win_rate,
             'loss_rate': loss_rate,
             'avg_win': avg_win,
