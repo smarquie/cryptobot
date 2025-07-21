@@ -227,34 +227,24 @@ class TradingEngine:
             logger.error(f"❌ Trading cycle error: {e}")
 
     def _get_multi_timeframe_data(self) -> Dict:
-        """Get market data for all timeframes needed by strategies"""
+        """Get market data - 20-minute rolling window of 1-minute data for all strategies"""
         market_data = {}
         
         # Get current market prices
         current_prices = self.exchange.get_market_data()
         market_data.update(current_prices)
         
-        # Get timeframe-specific data for each symbol
-        timeframes = ['1m', '5m', '15m', '1h']
-        
+        # Get 1-minute data for each symbol (20-minute rolling window)
         for symbol in self.symbols:
-            for timeframe in timeframes:
-                try:
-                    # Get appropriate lookback based on timeframe
-                    lookback_map = {
-                        '1m': 10,
-                        '5m': 20, 
-                        '15m': 40,
-                        '1h': 24
-                    }
-                    lookback = lookback_map.get(timeframe, 20)
+            try:
+                # Get 20 minutes of 1-minute data (enough for all strategies)
+                df = self.exchange.get_candles_df(symbol, interval='1m', lookback=20)
+                if not df.empty:
+                    # Store as 1-minute data for all strategies
+                    market_data[f"{symbol}_1m"] = df
                     
-                    df = self.exchange.get_candles_df(symbol, interval=timeframe, lookback=lookback)
-                    if not df.empty:
-                        market_data[f"{symbol}_{timeframe}"] = df
-                        
                 except Exception as e:
-                    logger.warning(f"⚠️ Failed to get {timeframe} data for {symbol}: {e}")
+                    logger.warning(f"⚠️ Failed to get 1m data for {symbol}: {e}")
         
         return market_data
 
