@@ -190,9 +190,9 @@ class BotConfig:
     
     # Hyperliquid settings
     HYPERLIQUID_PRIVATE_KEY = "YOUR_HYPERLIQUID_PRIVATE_KEY_HERE"
-    HYPERLIQUID_API_URL = "https://api.hyperliquid.xyz"
-    HYPERLIQUID_WS_URL = "wss://api.hyperliquid.xyz/ws"
-    
+    HYPERLIQUID_ACCOUNT_ADDRESS = "YOUR_HYPERLIQUID_ACCOUNT_ADDRESS_HERE"
+    USE_TESTNET = True  # Use testnet for paper trading
+
     # ==================== BACKTESTING ====================
     
     # Backtesting settings
