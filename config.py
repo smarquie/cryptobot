@@ -188,6 +188,11 @@ class BotConfig:
     API_SECRET = "YOUR_API_SECRET_HERE"
     PASSPHRASE = "YOUR_PASSPHRASE_HERE"
     
+    # Hyperliquid settings
+    HYPERLIQUID_PRIVATE_KEY = "YOUR_HYPERLIQUID_PRIVATE_KEY_HERE"
+    HYPERLIQUID_API_URL = "https://api.hyperliquid.xyz"
+    HYPERLIQUID_WS_URL = "wss://api.hyperliquid.xyz/ws"
+    
     # ==================== BACKTESTING ====================
     
     # Backtesting settings
