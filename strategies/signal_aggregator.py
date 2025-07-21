@@ -5,7 +5,7 @@ from .ultra_scalp import UltraScalpStrategy
 from .fast_scalp import FastScalpStrategy
 from .quick_momentum import QuickMomentumStrategy
 from .ttm_squeeze import TTMSqueezeStrategy
-from config import BotConfig
+from cryptobot.config import BotConfig
 
 class SignalAggregator:
     def __init__(self):
@@ -171,6 +171,11 @@ class SignalAggregator:
     def get_strategy_timeline_info(self, strategy_name: str) -> Dict:
         """Get timeline information for a specific strategy"""
         return self.strategy_configs.get(strategy_name, {})
+
+    def get_all_timelines(self) -> Dict:
+        """Get timeline information for all strategies"""
+        return self.strategy_configs
+
 
     def get_all_timelines(self) -> Dict:
         """Get timeline information for all strategies"""
