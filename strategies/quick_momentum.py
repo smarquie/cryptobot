@@ -86,20 +86,16 @@ class QuickMomentumStrategy:
             
             # Calculate indicators using centralized parameters
             rsi = self._calculate_rsi(close, 11)  # RSI period
-            stoch_k, stoch_d = self._calculate_stochastic(high, low, close, 14)
-            macd_line, signal_line, histogram = self._calculate_macd(close, 12, 26, 9)
+            fast_ma = self._calculate_ema(close, BotConfig.MOMENTUM_FAST_MA_PERIOD)
+            slow_ma = self._calculate_ema(close, BotConfig.MOMENTUM_SLOW_MA_PERIOD)
             
             current_price = float(close.iloc[-1])
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
-            current_stoch_k = float(stoch_k.iloc[-1]) if not pd.isna(stoch_k.iloc[-1]) else 50.0
-            current_stoch_d = float(stoch_d.iloc[-1]) if not pd.isna(stoch_d.iloc[-1]) else 50.0
-            current_macd = float(macd_line.iloc[-1]) if not pd.isna(macd_line.iloc[-1]) else 0.0
-            current_signal = float(signal_line.iloc[-1]) if not pd.isna(signal_line.iloc[-1]) else 0.0
+            current_fast_ma = float(fast_ma.iloc[-1]) if not pd.isna(fast_ma.iloc[-1]) else current_price
+            current_slow_ma = float(slow_ma.iloc[-1]) if not pd.isna(slow_ma.iloc[-1]) else current_price
             
-            # GCP Detection
-            gcp_result = self.gcp_detector.detect_gcp(df)
-            gcp_detected = gcp_result['detected']
-            gcp_confidence = gcp_result['confidence']
+            # Moving average crossover
+            ma_crossover = current_fast_ma > current_slow_ma
             
             # RSI Slope calculation
             rsi_slope = 0.0
@@ -107,66 +103,57 @@ class QuickMomentumStrategy:
                 rsi_prev = float(rsi.iloc[-3]) if not pd.isna(rsi.iloc[-3]) else current_rsi
                 rsi_slope = current_rsi - rsi_prev
             
-            # MACD momentum
-            macd_momentum = 0.0
-            if len(histogram) >= 2:
-                prev_histogram = float(histogram.iloc[-2]) if not pd.isna(histogram.iloc[-2]) else 0.0
-                current_histogram = float(histogram.iloc[-1]) if not pd.isna(histogram.iloc[-1]) else 0.0
-                macd_momentum = current_histogram - prev_histogram
-            
             # Price momentum
-            price_change_3m = ((current_price / close.iloc[-4]) - 1) * 100 if len(close) > 3 else 0
+            price_change_5m = ((current_price / close.iloc[-6]) - 1) * 100 if len(close) > 5 else 0
             
-            # Volume analysis
-            volume_avg = volume.rolling(7).mean().iloc[-1] if len(volume) >= 7 else volume.iloc[-1]
-            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * 1.02  # FIXED: Much lower threshold
+            # Trend confirmation
+            trend_periods = min(BotConfig.MOMENTUM_TREND_PERIODS, len(close) - 1)
+            price_trend = 0.0
+            if trend_periods > 0:
+                recent_prices = close.iloc[-trend_periods-1:]
+                price_trend = ((recent_prices.iloc[-1] / recent_prices.iloc[0]) - 1) * 100
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 50 and  # FIXED: 50 instead of 40
-                # FIXED: Much more permissive momentum requirements
-                (rsi_slope > -3.0 or price_change_3m > -2.0 or gcp_detected)):  # Either RSI not falling fast OR price not falling fast OR GCP
+            if (current_rsi < BotConfig.MOMENTUM_RSI_BUY_THRESHOLD and  # Oversold condition
+                ma_crossover and  # Fast MA above slow MA
+                abs(price_trend) >= BotConfig.MOMENTUM_MIN_PRICE_CHANGE):  # Minimum price change
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.3  # FIXED: Higher base confidence
-                rsi_distance = 50 - current_rsi  # FIXED: Use 50 as threshold
-                momentum_bonus = min(0.3, max(0, rsi_slope / 20 + price_change_3m / 100))
-                gcp_bonus = gcp_confidence if gcp_detected else 0.0
-                volume_bonus = 0.1 if volume_surge else 0.0
+                base_confidence = BotConfig.MOMENTUM_BASE_CONFIDENCE  # 0.5
+                rsi_distance = BotConfig.MOMENTUM_RSI_BUY_THRESHOLD - current_rsi
+                trend_bonus = BotConfig.MOMENTUM_TREND_CONFIDENCE_BONUS if price_trend > 0 else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 30) + momentum_bonus + gcp_bonus + volume_bonus)
-                reason = f'FIXED Quick-momentum BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_change_3m:.2f}%'
-                if gcp_detected:
-                    reason += f', GCP detected'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + trend_bonus)
+                reason = f'FIXED Quick-momentum BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_trend:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (current_rsi > 50 and  # FIXED: 50 instead of 60
-                  # FIXED: Much more permissive momentum requirements
-                  (rsi_slope < 3.0 or price_change_3m < 2.0)):  # Either RSI not rising fast OR price not rising fast
+            elif (current_rsi > BotConfig.MOMENTUM_RSI_SELL_THRESHOLD and  # Overbought condition
+                  not ma_crossover and  # Fast MA below slow MA
+                  abs(price_trend) >= BotConfig.MOMENTUM_MIN_PRICE_CHANGE):  # Minimum price change
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.3  # FIXED: Higher base confidence
-                rsi_distance = current_rsi - 50  # FIXED: Use 50 as threshold
-                momentum_bonus = min(0.3, max(0, abs(rsi_slope) / 20 + abs(price_change_3m) / 100))
-                volume_bonus = 0.1 if volume_surge else 0.0
+                base_confidence = BotConfig.MOMENTUM_BASE_CONFIDENCE  # 0.5
+                rsi_distance = current_rsi - BotConfig.MOMENTUM_RSI_SELL_THRESHOLD
+                trend_bonus = BotConfig.MOMENTUM_TREND_CONFIDENCE_BONUS if price_trend < 0 else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 30) + momentum_bonus + volume_bonus)
-                reason = f'FIXED Quick-momentum SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_change_3m:.2f}%'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + trend_bonus)
+                reason = f'FIXED Quick-momentum SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_trend:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.0040)  # 0.40% stop loss
-                take_profit = current_price * (1 + 0.0080)  # 0.80% profit target
+                stop_loss = current_price * (1 - BotConfig.MOMENTUM_STOP_LOSS)
+                take_profit = current_price * (1 + BotConfig.MOMENTUM_PROFIT_TARGET)
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.0040)  # 0.40% stop loss
-                take_profit = current_price * (1 - 0.0080)  # 0.80% profit target
+                stop_loss = current_price * (1 + BotConfig.MOMENTUM_STOP_LOSS)
+                take_profit = current_price * (1 - BotConfig.MOMENTUM_PROFIT_TARGET)
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -179,14 +166,12 @@ class QuickMomentumStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': 1200,  # 20 minutes
-                'target_hold': '20 minutes',
+                'max_hold_time': BotConfig.MOMENTUM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
                 'rsi': current_rsi,
                 'rsi_slope': rsi_slope,
-                'price_change_3m': price_change_3m,
-                'gcp_detected': gcp_detected,
-                'gcp_confidence': gcp_confidence,
-                'volume_surge': volume_surge
+                'price_trend': price_trend,
+                'ma_crossover': ma_crossover
             }
 
         except Exception as e:
