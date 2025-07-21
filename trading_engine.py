@@ -9,14 +9,14 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 # Local imports
-from utils.wallet import validate_private_key
-from config import BotConfig
-from strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy
-from strategies.signal_aggregator import SignalAggregator
-from utils.exchange import ExchangeInterface
-from utils.telegram import TelegramNotifier
-from utils.logger import setup_logger
-from utils.portfolio import Portfolio
+from cryptobot.utils.wallet import validate_private_key
+from cryptobot.config import BotConfig
+from cryptobot.strategies import UltraScalpStrategy, FastScalpStrategy, QuickMomentumStrategy, TTMSqueezeStrategy
+from cryptobot.strategies.signal_aggregator import SignalAggregator
+from cryptobot.utils.exchange import ExchangeInterface
+from cryptobot.utils.telegram import TelegramNotifier
+from cryptobot.utils.logger import setup_logger
+from cryptobot.utils.portfolio import Portfolio
 
 setup_logger()
 logger = logging.getLogger(__name__)
@@ -243,8 +243,8 @@ class TradingEngine:
                     # Store as 1-minute data for all strategies
                     market_data[f"{symbol}_1m"] = df
                     
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to get 1m data for {symbol}: {e}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to get 1m data for {symbol}: {e}")
         
         return market_data
 
@@ -294,5 +294,8 @@ def help_commands():
     print("🧠 Available Commands:")
     print(" • await start_bot() → Start the bot")
     print(" • complete_stop_bot() → Stop the bot")
+    print(" • check_status() → View current status")
+    print(" • help_commands() → Show this list")
+
     print(" • check_status() → View current status")
     print(" • help_commands() → Show this list")
