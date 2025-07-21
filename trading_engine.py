@@ -87,6 +87,10 @@ class TradingEngine:
                 return
             market_data = self._get_multi_timeframe_data()
             self.portfolio.update_current_prices(market_data)
+            
+            # MONITOR EXISTING POSITIONS FOR EXIT CONDITIONS
+            self._check_position_exits(market_data)
+            
             self.cycle_count += 1
             summary = self.portfolio.get_summary()
             if self.cycle_count % 5 == 0:
@@ -183,6 +187,10 @@ class TradingEngine:
         except Exception as e:
             logger.error(f"❌ Trading cycle error: {e}")
 
+    async def stop(self):
+        self.is_running = False
+        logger.info("🛑 Trading engine stopped")
+
     def _get_multi_timeframe_data(self) -> Dict:
         market_data = {}
         current_prices = self.exchange.get_market_data()
@@ -196,9 +204,79 @@ class TradingEngine:
                 logger.warning(f"⚠️ Failed to get 1m data for {symbol}: {e}")
         return market_data
 
-    async def stop(self):
-        self.is_running = False
-        logger.info("🛑 Trading engine stopped")
+    def _check_position_exits(self, market_data: Dict):
+        """Check all open positions for exit conditions (stop loss, take profit, time limit)"""
+        current_time = datetime.now()
+        
+        for (symbol, strategy), position in list(self.portfolio.positions.items()):
+            current_price = market_data.get(symbol, position.get('entry_price', 0))
+            if current_price <= 0:
+                continue
+                
+            # Check stop loss
+            if position.get('stop_loss'):
+                if position['side'] == 'buy' and current_price <= position['stop_loss']:
+                    logger.info(f"🛑 {symbol} ({strategy}): Stop loss hit at ${current_price:.2f}")
+                    self._close_position_with_telegram(symbol, strategy, current_price, 'stop_loss')
+                    continue
+                elif position['side'] == 'sell' and current_price >= position['stop_loss']:
+                    logger.info(f"🛑 {symbol} ({strategy}): Stop loss hit at ${current_price:.2f}")
+                    self._close_position_with_telegram(symbol, strategy, current_price, 'stop_loss')
+                    continue
+            
+            # Check take profit
+            if position.get('take_profit'):
+                if position['side'] == 'buy' and current_price >= position['take_profit']:
+                    logger.info(f"💰 {symbol} ({strategy}): Take profit hit at ${current_price:.2f}")
+                    self._close_position_with_telegram(symbol, strategy, current_price, 'take_profit')
+                    continue
+                elif position['side'] == 'sell' and current_price <= position['take_profit']:
+                    logger.info(f"💰 {symbol} ({strategy}): Take profit hit at ${current_price:.2f}")
+                    self._close_position_with_telegram(symbol, strategy, current_price, 'take_profit')
+                    continue
+            
+            # Check time limit
+            if position.get('entry_time'):
+                entry_time = datetime.fromisoformat(position['entry_time'])
+                max_hold_seconds = position.get('max_hold_time', 1800)  # Default 30 minutes
+                elapsed_seconds = (current_time - entry_time).total_seconds()
+                
+                if elapsed_seconds >= max_hold_seconds:
+                    logger.info(f"⏰ {symbol} ({strategy}): Time limit reached ({elapsed_seconds:.0f}s)")
+                    self._close_position_with_telegram(symbol, strategy, current_price, 'time_limit')
+                    continue
+
+    def _close_position_with_telegram(self, symbol: str, strategy: str, current_price: float, reason: str):
+        """Close a position and send Telegram notification"""
+        if self.portfolio.close_position(symbol, strategy, current_price, reason):
+            # Get the closed position details for Telegram
+            portfolio_summary = self.portfolio.get_summary()
+            
+            # Find the closed position in trade history
+            recent_trades = [t for t in self.portfolio.trade_history if t['symbol'] == symbol and t['strategy'] == strategy]
+            if recent_trades:
+                latest_trade = recent_trades[-1]
+                
+                # Calculate hold duration
+                if 'entry_time' in latest_trade:
+                    entry_time = datetime.fromisoformat(latest_trade['entry_time'])
+                    hold_duration = f"{((datetime.now() - entry_time).total_seconds() / 60):.1f} minutes"
+                else:
+                    hold_duration = "N/A"
+                
+                if self.telegram.enabled:
+                    self.telegram.send_position_closed(
+                        symbol=symbol,
+                        side=latest_trade.get('side', 'unknown'),
+                        size=latest_trade.get('size', 0),
+                        entry_price=latest_trade.get('entry_price', 0),
+                        close_price=current_price,
+                        pnl=latest_trade['pnl'],
+                        reason=reason,
+                        strategy=strategy,
+                        hold_duration=hold_duration,
+                        portfolio_summary=portfolio_summary
+                    )
 
 async def start_bot():
     global GLOBAL_BOT_STATE
