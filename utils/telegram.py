@@ -3,7 +3,7 @@
 import requests
 from typing import Dict, Any, Optional
 from datetime import datetime
-from config import BotConfig
+from cryptobot.config import BotConfig
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,13 @@ class TelegramNotifier:
     """Telegram bot using centralized parameters from config"""
 
     def __init__(self):
-        from config import BotConfig
+        from cryptobot.config import BotConfig
+
+        # DEBUG PRINTS
+        print("DEBUG: TelegramNotifier is reading these values at startup:")
+        print("DEBUG: BotConfig.TELEGRAM_BOT_TOKEN =", repr(BotConfig.TELEGRAM_BOT_TOKEN))
+        print("DEBUG: BotConfig.TELEGRAM_CHAT_ID =", repr(BotConfig.TELEGRAM_CHAT_ID))
+
         
         # Load token/chat_id directly from config
         self.bot_token = BotConfig.TELEGRAM_BOT_TOKEN.strip()
