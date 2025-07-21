@@ -27,16 +27,15 @@ class FastScalpStrategy:
             
             # Calculate indicators using centralized parameters
             rsi = self._calculate_rsi(close, 9)  # RSI period
-            ema_fast = self._calculate_ema(close, 8)  # Fast EMA
-            ema_slow = self._calculate_ema(close, 21)  # Slow EMA
+            macd_line, signal_line, histogram = self._calculate_macd(close, BotConfig.FAST_SCALP_MACD_FAST, BotConfig.FAST_SCALP_MACD_SLOW, BotConfig.FAST_SCALP_MACD_SIGNAL)
             
             current_price = float(close.iloc[-1])
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
-            current_ema_fast = float(ema_fast.iloc[-1]) if not pd.isna(ema_fast.iloc[-1]) else current_price
-            current_ema_slow = float(ema_slow.iloc[-1]) if not pd.isna(ema_slow.iloc[-1]) else current_price
+            current_macd = float(macd_line.iloc[-1]) if not pd.isna(macd_line.iloc[-1]) else 0.0
+            current_signal = float(signal_line.iloc[-1]) if not pd.isna(signal_line.iloc[-1]) else 0.0
             
-            # EMA crossover
-            ema_crossover = current_ema_fast > current_ema_slow
+            # MACD crossover
+            macd_crossover = current_macd > current_signal
             
             # RSI Slope calculation
             rsi_slope = 0.0
@@ -48,54 +47,55 @@ class FastScalpStrategy:
             price_change_2m = ((current_price / close.iloc[-3]) - 1) * 100 if len(close) > 2 else 0
             
             # Volume analysis
-            volume_avg = volume.rolling(5).mean().iloc[-1] if len(volume) >= 5 else volume.iloc[-1]
-            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * 1.05  # FIXED: Lower threshold
+            volume_avg = volume.rolling(BotConfig.FAST_SCALP_VOLUME_PERIOD).mean().iloc[-1] if len(volume) >= BotConfig.FAST_SCALP_VOLUME_PERIOD else volume.iloc[-1]
+            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * BotConfig.FAST_SCALP_VOLUME_MULTIPLIER
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 45 and  # FIXED: 45 instead of 35
-                ema_crossover and  # EMA crossover required
+            if (current_rsi < BotConfig.FAST_SCALP_RSI_BUY_THRESHOLD and  # Oversold condition
+                # FIXED: Make MACD crossover optional - either crossover OR momentum
+                (macd_crossover or price_change_2m > -0.5) and  # Either MACD crossover OR not falling too fast
                 # FIXED: Much more permissive momentum requirements
                 (rsi_slope > -2.0 or price_change_2m > -1.0)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.4  # FIXED: Higher base confidence
-                rsi_distance = 45 - current_rsi  # FIXED: Use 45 as threshold
+                base_confidence = BotConfig.FAST_SCALP_BASE_CONFIDENCE  # 0.6
+                rsi_distance = BotConfig.FAST_SCALP_RSI_BUY_THRESHOLD - current_rsi
                 momentum_bonus = min(0.3, max(0, rsi_slope / 15 + price_change_2m / 50))
-                volume_bonus = 0.1 if volume_surge else 0.0
+                volume_bonus = BotConfig.FAST_SCALP_VOLUME_CONFIDENCE_BONUS if volume_surge else 0.0
                 
                 confidence = min(0.9, base_confidence + (rsi_distance / 25) + momentum_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), EMA crossover, momentum={price_change_2m:.2f}%'
+                reason = f'FIXED Fast-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), MACD crossover, momentum={price_change_2m:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (current_rsi > 55 and  # FIXED: 55 instead of 65
-                  not ema_crossover and  # EMA crossover required
+            elif (current_rsi > BotConfig.FAST_SCALP_RSI_SELL_THRESHOLD and  # Overbought condition
+                  not macd_crossover and  # MACD crossover required
                   # FIXED: Much more permissive momentum requirements
                   (rsi_slope < 2.0 or price_change_2m < 1.0)):  # Either RSI not rising fast OR price not rising fast
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.4  # FIXED: Higher base confidence
-                rsi_distance = current_rsi - 55  # FIXED: Use 55 as threshold
+                base_confidence = BotConfig.FAST_SCALP_BASE_CONFIDENCE  # 0.6
+                rsi_distance = current_rsi - BotConfig.FAST_SCALP_RSI_SELL_THRESHOLD
                 momentum_bonus = min(0.3, max(0, abs(rsi_slope) / 15 + abs(price_change_2m) / 50))
-                volume_bonus = 0.1 if volume_surge else 0.0
+                volume_bonus = BotConfig.FAST_SCALP_VOLUME_CONFIDENCE_BONUS if volume_surge else 0.0
                 
                 confidence = min(0.9, base_confidence + (rsi_distance / 25) + momentum_bonus + volume_bonus)
-                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), EMA crossover, momentum={price_change_2m:.2f}%'
+                reason = f'FIXED Fast-scalp SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), MACD crossover, momentum={price_change_2m:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.0030)  # 0.30% stop loss
-                take_profit = current_price * (1 + 0.0060)  # 0.60% profit target
+                stop_loss = current_price * (1 - BotConfig.FAST_SCALP_STOP_LOSS)
+                take_profit = current_price * (1 + BotConfig.FAST_SCALP_PROFIT_TARGET)
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.0030)  # 0.30% stop loss
-                take_profit = current_price * (1 - 0.0060)  # 0.60% profit target
+                stop_loss = current_price * (1 + BotConfig.FAST_SCALP_STOP_LOSS)
+                take_profit = current_price * (1 - BotConfig.FAST_SCALP_PROFIT_TARGET)
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -108,13 +108,13 @@ class FastScalpStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': 900,  # 15 minutes
-                'target_hold': '15 minutes',
+                'max_hold_time': BotConfig.FAST_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.FAST_SCALP_MAX_HOLD_SECONDS//60} minutes',
                 'rsi': current_rsi,
                 'rsi_slope': rsi_slope,
                 'price_change_2m': price_change_2m,
-                'ema_crossover': ema_crossover,
-                'volume_surge': volume_surge
+                'volume_surge': volume_surge,
+                'macd_crossover': macd_crossover
             }
 
         except Exception as e:
