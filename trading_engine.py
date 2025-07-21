@@ -38,18 +38,11 @@ class TradingEngine:
         self.portfolio = Portfolio()
         self.aggregator = SignalAggregator()
         self.telegram = TelegramNotifier()
-        #    bot_token=BotConfig.TELEGRAM_BOT_TOKEN,
-        #    chat_id=BotConfig.TELEGRAM_CHAT_ID
-        #)        
         self.is_running = False
         self.cycle_count = 0
         self.symbols = BotConfig.TRADING_SYMBOLS
-        
-        # FIXED: Add data collection tracking
         self.data_collection_start = None
         self.trading_enabled = False
-        
-        # Log wallet status
         if self.wallet:
             logger.info(f"✅ Trading wallet loaded: {self.wallet.address}")
         else:
@@ -58,27 +51,19 @@ class TradingEngine:
     async def start_trading(self):
         self.is_running = True
         logger.info("🚀 Trading engine started")
-        
-        # FIXED: Add data collection phase
         if BotConfig.DATA_COLLECTION_ENABLED:
             await self.collect_initial_data()
-        
         while self.is_running:
             await self.trading_cycle()
             await asyncio.sleep(BotConfig.CYCLE_INTERVAL)
-    
+
     async def collect_initial_data(self):
-        """Collect initial data before starting trading"""
         logger.info(f"📊 Starting {BotConfig.INITIAL_DATA_COLLECTION_MINUTES} minute data collection...")
         self.data_collection_start = datetime.now()
-        
         for minute in range(BotConfig.INITIAL_DATA_COLLECTION_MINUTES):
             if not self.is_running:
                 return
-            
             logger.info(f"⏳ Data collection: {minute + 1}/{BotConfig.INITIAL_DATA_COLLECTION_MINUTES} minutes")
-            
-            # Collect data for each symbol
             for symbol in self.symbols:
                 try:
                     df = self.exchange.get_candles_df(symbol, interval='1m', lookback=BotConfig.MIN_DATA_MINUTES)
@@ -88,66 +73,45 @@ class TradingEngine:
                         logger.warning(f"⚠️ {symbol}: No data collected")
                 except Exception as e:
                     logger.error(f"❌ {symbol}: Data collection error - {e}")
-            
-            await asyncio.sleep(60)  # Wait 1 minute
-        
+            await asyncio.sleep(60)
         self.trading_enabled = True
         logger.info("✅ Data collection complete - Trading enabled!")
-    
+
     async def trading_cycle(self):
         try:
-            # FIXED: Check if trading is enabled
             if not self.trading_enabled and BotConfig.DATA_COLLECTION_ENABLED:
-                if self.cycle_count % 10 == 0:  # Log every 10 cycles
+                if self.cycle_count % 10 == 0:
                     elapsed = (datetime.now() - self.data_collection_start).total_seconds() / 60 if self.data_collection_start else 0
                     remaining = max(0, BotConfig.INITIAL_DATA_COLLECTION_MINUTES - elapsed)
                     logger.info(f"📊 Data collection: {elapsed:.1f}/{BotConfig.INITIAL_DATA_COLLECTION_MINUTES} min (remaining: {remaining:.1f})")
                 return
-            
-            # Get market data for all timeframes
             market_data = self._get_multi_timeframe_data()
-            
-            # FIXED: Update portfolio with current market prices for mark-to-market
             self.portfolio.update_current_prices(market_data)
-            
             self.cycle_count += 1
-
             summary = self.portfolio.get_summary()
-            if self.cycle_count % 5 == 0:  # Log every 5 cycles instead of 20
+            if self.cycle_count % 5 == 0:
                 logger.info(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f} | P&L: ${summary['unrealized_pnl']:,.2f}")
                 print(f"📊 Cycle #{self.cycle_count} | Value: ${summary['total_value']:,.2f} | P&L: ${summary['unrealized_pnl']:,.2f}")
-
-            # Process each symbol for multiple strategies
             for symbol in self.symbols:
-                # Get all signals from all strategies for this symbol
                 signals = self.aggregator.aggregate(market_data, symbol)
-                
                 if not signals:
-                    # Log why no signals were generated (every 5 cycles)
                     if self.cycle_count % 5 == 0:
                         logger.info(f"📊 {symbol}: No signals from any strategy")
                         print(f"📊 {symbol}: No signals from any strategy")
                     continue
-                
-                # Process each signal from different strategies
                 for signal in signals:
-                    # Check if we can execute this trade
                     can_execute, reason = self.portfolio.can_execute_trade(signal, symbol)
-                    
                     if not can_execute:
                         if "Need to close existing" in reason:
-                            # Handle direction change: close existing positions first
                             current_price = market_data.get(symbol, 0)
                             if current_price > 0:
                                 logger.info(f"🔄 {symbol}: Direction change detected - closing existing positions")
                                 closed_positions = self.portfolio.close_all_positions_for_symbol(symbol, current_price, 'direction_change')
-                                
                                 if closed_positions:
                                     logger.info(f"✅ {symbol}: Closed {len(closed_positions)} positions, now can execute new trade")
-                                    # Enhanced Telegram reporting for closed positions
                                     for pos in closed_positions:
                                         portfolio_summary = self.portfolio.get_summary()
-                                        hold_duration = "N/A"  # You can calculate actual hold time if you store entry_time
+                                        hold_duration = "N/A"
                                         if self.telegram.enabled:
                                             self.telegram.send_position_closed(
                                                 symbol=symbol,
@@ -168,26 +132,20 @@ class TradingEngine:
                                 logger.warning(f"⚠️ {symbol}: No current price for position closing")
                                 continue
                         elif "cooldown" in reason:
-                            # In cooling period, skip this trade
-                            if self.cycle_count % 5 == 0:  # Log every 5 cycles to avoid spam
+                            if self.cycle_count % 5 == 0:
                                 logger.info(f"📊 {symbol}: {reason}")
                             continue
                         else:
                             logger.info(f"📊 {symbol}: {reason}")
                             continue
-                    
-                    # Validate signal is a dictionary
                     if not isinstance(signal, dict):
                         logger.warning(f"⚠️ {symbol}: Invalid signal type {type(signal)} - skipping")
                         continue
-                    
-                    # Enhanced logging with timeline information
                     if signal.get('action') != 'hold':
                         current_price = market_data.get(symbol, signal.get('entry_price', 0))
                         if current_price > 0:
                             position_size = self.portfolio.calculate_position_size(signal, current_price)
                             position_value = position_size * current_price
-                            
                             signal_message = (
                                 f"🎯 {symbol} Signal: {signal.get('action', 'unknown')} (conf: {signal.get('confidence', 0):.3f})\n"
                                 f"📊 Strategy: {signal.get('strategy', 'unknown')} ({signal.get('timeframe', 'unknown')})\n"
@@ -204,17 +162,12 @@ class TradingEngine:
                                 f"⏰ Timeline: {signal.get('target_hold', 'unknown')}\n"
                                 f"📝 Reason: {signal.get('reason', 'unknown')}"
                             )
-                        
                         logger.info(signal_message)
                         print(signal_message)
-                        
-                        # Execute trade if valid
                         if current_price > 0:
                             signal['entry_price'] = current_price
                             signal['position_size'] = position_size
-                            
                             if self.portfolio.open_position(signal, symbol, current_price):
-                                # Enhanced trade execution message with timeline
                                 portfolio_summary = self.portfolio.get_summary()
                                 if self.telegram.enabled:
                                     self.telegram.send_position_opened(
@@ -231,25 +184,16 @@ class TradingEngine:
             logger.error(f"❌ Trading cycle error: {e}")
 
     def _get_multi_timeframe_data(self) -> Dict:
-        """Get market data - 20-minute rolling window of 1-minute data for all strategies"""
         market_data = {}
-        
-        # Get current market prices
         current_prices = self.exchange.get_market_data()
         market_data.update(current_prices)
-        
-        # Get 1-minute data for each symbol (20-minute rolling window)
         for symbol in self.symbols:
             try:
-                # Get 20 minutes of 1-minute data (enough for all strategies)
                 df = self.exchange.get_candles_df(symbol, interval='1m', lookback=20)
                 if not df.empty:
-                    # Store as 1-minute data for all strategies
                     market_data[f"{symbol}_1m"] = df
-                    
             except Exception as e:
                 logger.warning(f"⚠️ Failed to get 1m data for {symbol}: {e}")
-        
         return market_data
 
     async def stop(self):
@@ -261,7 +205,6 @@ async def start_bot():
     if GLOBAL_BOT_STATE['running']:
         print("⚠️ Bot already running")
         return
-
     engine = TradingEngine()
     task = asyncio.create_task(engine.start_trading())
     GLOBAL_BOT_STATE.update({
@@ -276,7 +219,6 @@ def complete_stop_bot():
     if not GLOBAL_BOT_STATE['running']:
         print("⚠️ Bot not running")
         return
-
     engine = GLOBAL_BOT_STATE['engine']
     asyncio.run(engine.stop())
     GLOBAL_BOT_STATE.update({'engine': None, 'task': None, 'running': False})
@@ -297,6 +239,10 @@ def check_status():
 def help_commands():
     print("🧠 Available Commands:")
     print(" • await start_bot() → Start the bot")
+    print(" • complete_stop_bot() → Stop the bot")
+    print(" • check_status() → View current status")
+    print(" • help_commands() → Show this list")
+
     print(" • complete_stop_bot() → Stop the bot")
     print(" • check_status() → View current status")
     print(" • help_commands() → Show this list")
