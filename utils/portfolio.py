@@ -339,7 +339,7 @@ class Portfolio:
         return True
     
     def get_summary(self) -> Dict[str, Any]:
-        """Return portfolio summary with proper mark-to-market calculations"""
+        """Return portfolio summary with proper mark-to-market calculations and win/loss stats"""
         # Start with cash balance
         total_value = self.balance
         total_unrealized_pnl = 0.0
@@ -347,31 +347,24 @@ class Portfolio:
         # Add current market value of all positions
         for (symbol, strategy), pos in self.positions.items():
             current_price = self.current_prices.get(symbol, pos['entry_price'])
-            
-            # Calculate current position value
             position_value = pos['size'] * current_price
             total_value += position_value
-            
-            # Calculate unrealized P&L
             if pos['side'] == 'buy':
                 unrealized_pnl = (current_price - pos['entry_price']) * pos['size']
-            else:  # sell position
+            else:
                 unrealized_pnl = (pos['entry_price'] - current_price) * pos['size']
-            
             total_unrealized_pnl += unrealized_pnl
-            
-            # Log position details for debugging
-            if self.positions:  # Only log if we have positions
+            if self.positions:
                 logger.debug(f"📊 {symbol} ({strategy}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
-        
-        # Calculate exposure percentage
         exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for (symbol, strategy), pos in self.positions.items())
         exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
-        
-        # Calculate win rate
+        # Win/loss stats
         win_trades = [p for p in self.trade_history if p['pnl'] > 0]
+        loss_trades = [p for p in self.trade_history if p['pnl'] < 0]
         win_rate = len(win_trades) / len(self.trade_history) if self.trade_history else 0.0
-        
+        loss_rate = len(loss_trades) / len(self.trade_history) if self.trade_history else 0.0
+        avg_win = sum(p['pnl'] for p in win_trades) / len(win_trades) if win_trades else 0.0
+        avg_loss = sum(p['pnl'] for p in loss_trades) / len(loss_trades) if loss_trades else 0.0
         return {
             'balance': self.balance,
             'total_value': total_value,
@@ -379,5 +372,8 @@ class Portfolio:
             'unrealized_pnl': total_unrealized_pnl,
             'exposure_pct': exposure_pct,
             'win_rate': win_rate,
+            'loss_rate': loss_rate,
+            'avg_win': avg_win,
+            'avg_loss': avg_loss,
             'trade_count': len(self.trade_history)
         }
