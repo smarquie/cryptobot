@@ -26,8 +26,8 @@ class UltraScalpStrategy:
             volume = df['volume']
             
             # Calculate indicators using centralized parameters
-            rsi = self._calculate_rsi(close, 7)  # RSI period
-            sma = self._fast_sma(close, 5)      # SMA period
+            rsi = self._calculate_rsi(close, BotConfig.ULTRA_SCALP_RSI_PERIOD)
+            sma = self._fast_sma(close, BotConfig.ULTRA_SCALP_SMA_PERIOD)
             
             current_price = float(close.iloc[-1])
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
@@ -51,44 +51,44 @@ class UltraScalpStrategy:
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 40 and  # FIXED: 40 instead of 30
+            if (current_rsi < BotConfig.ULTRA_SCALP_RSI_BUY_THRESHOLD and  # Oversold condition
                 # FIXED: Much more permissive momentum requirements
-                (rsi_slope > -3.0 or price_change_1m > -1.5)):  # Either RSI not falling fast OR price not falling fast
+                (rsi_slope > -1.0 or price_change_1m > -0.5)):  # Either RSI not falling fast OR price not falling fast
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.5  # FIXED: Higher base confidence
-                rsi_distance = 40 - current_rsi  # FIXED: Use 40 as threshold
+                base_confidence = BotConfig.ULTRA_SCALP_BASE_CONFIDENCE  # 0.5
+                rsi_distance = BotConfig.ULTRA_SCALP_RSI_BUY_THRESHOLD - current_rsi
                 momentum_bonus = min(0.2, max(0, rsi_slope / 10 + price_change_1m / 100))
                 volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 20) + momentum_bonus + volume_bonus)
+                confidence = min(0.9, base_confidence + (rsi_distance / BotConfig.ULTRA_SCALP_RSI_CONFIDENCE_FACTOR) + momentum_bonus + volume_bonus)
                 reason = f'FIXED Ultra-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_change_1m:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (current_rsi > 60 and  # FIXED: 60 instead of 70
+            elif (current_rsi > BotConfig.ULTRA_SCALP_RSI_SELL_THRESHOLD and  # Overbought condition
                   # FIXED: Much more permissive momentum requirements
-                  (rsi_slope < 3.0 or price_change_1m < 1.5)):  # Either RSI not rising fast OR price not rising fast
+                  (rsi_slope < 1.0 or price_change_1m < 0.5)):  # Either RSI not rising fast OR price not rising fast
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = 0.5  # FIXED: Higher base confidence
-                rsi_distance = current_rsi - 60  # FIXED: Use 60 as threshold
+                base_confidence = BotConfig.ULTRA_SCALP_BASE_CONFIDENCE  # 0.5
+                rsi_distance = current_rsi - BotConfig.ULTRA_SCALP_RSI_SELL_THRESHOLD
                 momentum_bonus = min(0.2, max(0, abs(rsi_slope) / 10 + abs(price_change_1m) / 100))
                 volume_bonus = 0.1 if volume_surge else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 20) + momentum_bonus + volume_bonus)
+                confidence = min(0.9, base_confidence + (rsi_distance / BotConfig.ULTRA_SCALP_RSI_CONFIDENCE_FACTOR) + momentum_bonus + volume_bonus)
                 reason = f'FIXED Ultra-scalp SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_change_1m:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.0025)  # 0.25% stop loss
-                take_profit = current_price * (1 + 0.0050)  # 0.50% profit target
+                stop_loss = current_price * (1 - BotConfig.ULTRA_SCALP_STOP_LOSS)
+                take_profit = current_price * (1 + BotConfig.ULTRA_SCALP_PROFIT_TARGET)
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.0025)  # 0.25% stop loss
-                take_profit = current_price * (1 - 0.0050)  # 0.50% profit target
+                stop_loss = current_price * (1 + BotConfig.ULTRA_SCALP_STOP_LOSS)
+                take_profit = current_price * (1 - BotConfig.ULTRA_SCALP_PROFIT_TARGET)
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -101,8 +101,8 @@ class UltraScalpStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': 600,  # 10 minutes
-                'target_hold': '10 minutes',
+                'max_hold_time': BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS//60} minutes',
                 'rsi': current_rsi,
                 'rsi_slope': rsi_slope,
                 'price_change_1m': price_change_1m,
