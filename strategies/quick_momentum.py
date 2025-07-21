@@ -1,23 +1,83 @@
 #!/usr/bin/env python3
 """
-TTM-SQUEEZE STRATEGY MODULE
+QUICK-MOMENTUM STRATEGY MODULE
 Replacement for GitHub repository - FIXED VERSION
 Based on working code with permissive parameters
+Includes GCP (Golden Cross Pattern) detection
 """
 
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
+from cryptobot.config import BotConfig
 
-class TTMSqueezeStrategy:
-    """FIXED TTM-Squeeze strategy - MUCH MORE PERMISSIVE"""
+class EarlyGCPDetector:
+    """Early Golden Cross Pattern Detector"""
     
     def __init__(self):
-        self.name = "TTM-Squeeze"
+        self.name = "GCP-Detector"
+    
+    def detect_gcp(self, df: pd.DataFrame) -> Dict:
+        """Detect Golden Cross Pattern early"""
+        try:
+            if df.empty or len(df) < 10:
+                return {'detected': False, 'confidence': 0.0, 'reason': 'Insufficient data'}
+            
+            close = df['close']
+            
+            # Calculate EMAs
+            ema_short = self._calculate_ema(close, 5)   # 5-period EMA
+            ema_medium = self._calculate_ema(close, 13)  # 13-period EMA
+            ema_long = self._calculate_ema(close, 21)    # 21-period EMA
+            
+            current_price = float(close.iloc[-1])
+            current_ema_short = float(ema_short.iloc[-1]) if not pd.isna(ema_short.iloc[-1]) else current_price
+            current_ema_medium = float(ema_medium.iloc[-1]) if not pd.isna(ema_medium.iloc[-1]) else current_price
+            current_ema_long = float(ema_long.iloc[-1]) if not pd.isna(ema_long.iloc[-1]) else current_price
+            
+            # Check for Golden Cross Pattern
+            short_above_medium = current_ema_short > current_ema_medium
+            medium_above_long = current_ema_medium > current_ema_long
+            price_above_all = current_price > current_ema_short
+            
+            # GCP conditions
+            gcp_bullish = short_above_medium and medium_above_long and price_above_all
+            
+            # Calculate momentum
+            price_momentum = ((current_price / close.iloc[-3]) - 1) * 100 if len(close) > 2 else 0
+            
+            confidence = 0.0
+            reason = 'No GCP detected'
+            
+            if gcp_bullish and price_momentum > 0.5:  # FIXED: More permissive
+                confidence = min(0.8, 0.5 + (price_momentum / 100))
+                reason = f'GCP detected: Short EMA above Medium EMA above Long EMA, momentum={price_momentum:.2f}%'
+            
+            return {
+                'detected': gcp_bullish,
+                'confidence': confidence,
+                'reason': reason,
+                'price_momentum': price_momentum,
+                'ema_alignment': short_above_medium and medium_above_long
+            }
+            
+        except Exception as e:
+            return {'detected': False, 'confidence': 0.0, 'reason': f'Error: {e}'}
+    
+    def _calculate_ema(self, data: pd.Series, period: int) -> pd.Series:
+        """Calculate Exponential Moving Average"""
+        return data.ewm(span=period, adjust=False).mean()
+
+class QuickMomentumStrategy:
+    """FIXED Quick-momentum strategy - MUCH MORE PERMISSIVE with GCP detection"""
+    
+    def __init__(self):
+        self.name = "Quick-Momentum"
+        self.gcp_detector = EarlyGCPDetector()
         
     def analyze_and_signal(self, df: pd.DataFrame, symbol: str) -> Dict:
         try:
-            if df.empty or len(df) < BotConfig.TTM_BB_PERIOD:  # Need enough data for Bollinger Bands
+            if df.empty or len(df) < 10:  # FIXED: Much lower minimum
                 return self._empty_signal('Insufficient data')
 
             close = df['close']
@@ -26,23 +86,19 @@ class TTMSqueezeStrategy:
             volume = df['volume']
             
             # Calculate indicators using centralized parameters
-            rsi = self._calculate_rsi(close, 14)  # RSI period
-            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(close, BotConfig.TTM_BB_PERIOD, BotConfig.TTM_BB_STDDEV)
-            keltner_upper, keltner_middle, keltner_lower = self._calculate_keltner_channels(high, low, close, BotConfig.TTM_KC_PERIOD, BotConfig.TTM_KC_ATR_MULTIPLIER)
+            rsi = self._calculate_rsi(close, 11)  # RSI period
+            fast_ma = self._calculate_ema(close, BotConfig.MOMENTUM_FAST_MA_PERIOD)
+            slow_ma = self._calculate_ema(close, BotConfig.MOMENTUM_SLOW_MA_PERIOD)
             
             current_price = float(close.iloc[-1])
             current_rsi = float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
-            current_bb_upper = float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else current_price * 1.02
-            current_bb_lower = float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else current_price * 0.98
-            current_keltner_upper = float(keltner_upper.iloc[-1]) if not pd.isna(keltner_upper.iloc[-1]) else current_price * 1.02
-            current_keltner_lower = float(keltner_lower.iloc[-1]) if not pd.isna(keltner_lower.iloc[-1]) else current_price * 0.98
+            current_fast_ma = float(fast_ma.iloc[-1]) if not pd.isna(fast_ma.iloc[-1]) else current_price
+            current_slow_ma = float(slow_ma.iloc[-1]) if not pd.isna(slow_ma.iloc[-1]) else current_price
             
-            # Squeeze detection
-            bb_width = current_bb_upper - current_bb_lower
-            keltner_width = current_keltner_upper - current_keltner_lower
-            squeeze_on = bb_width < keltner_width
+            # Moving average crossover
+            ma_crossover = current_fast_ma > current_slow_ma
             
-            # Momentum indicators
+            # RSI Slope calculation
             rsi_slope = 0.0
             if len(rsi) >= 3:
                 rsi_prev = float(rsi.iloc[-3]) if not pd.isna(rsi.iloc[-3]) else current_rsi
@@ -51,61 +107,54 @@ class TTMSqueezeStrategy:
             # Price momentum
             price_change_5m = ((current_price / close.iloc[-6]) - 1) * 100 if len(close) > 5 else 0
             
-            # Volume analysis
-            volume_avg = volume.rolling(10).mean().iloc[-1] if len(volume) >= 10 else volume.iloc[-1]
-            volume_surge = float(volume.iloc[-1]) > float(volume_avg) * 1.01  # FIXED: Much lower threshold
-            
-            # Position relative to bands
-            bb_position = (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if (current_bb_upper - current_bb_lower) > 0 else 0.5
-            keltner_position = (current_price - current_keltner_lower) / (current_keltner_upper - current_keltner_lower) if (current_keltner_upper - current_keltner_lower) > 0 else 0.5
+            # Trend confirmation
+            trend_periods = min(BotConfig.MOMENTUM_TREND_PERIODS, len(close) - 1)
+            price_trend = 0.0
+            if trend_periods > 0:
+                recent_prices = close.iloc[-trend_periods-1:]
+                price_trend = ((recent_prices.iloc[-1] / recent_prices.iloc[0]) - 1) * 100
             
             confidence = 0.0
             action = 'hold'
             reason = 'No signal'
             
             # FIXED BUY SIGNAL - MUCH MORE PERMISSIVE
-            if (current_rsi < 45 and  # FIXED: 45 instead of 35
-                # FIXED: Much more permissive momentum requirements
-                (rsi_slope > -3.0 or price_change_5m > -2.0)):  # Either RSI not falling fast OR price not falling fast
+            if (current_rsi < BotConfig.MOMENTUM_RSI_BUY_THRESHOLD and  # Oversold condition
+                ma_crossover and  # Fast MA above slow MA
+                abs(price_trend) >= BotConfig.MOMENTUM_MIN_PRICE_CHANGE):  # Minimum price change
                 
                 action = 'buy'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = BotConfig.TTM_BASE_CONFIDENCE  # 0.6
-                rsi_distance = 55 - current_rsi  # FIXED: Use 55 as threshold
-                squeeze_bonus = BotConfig.TTM_SQUEEZE_CONFIDENCE_BONUS if squeeze_on else 0.1
-                momentum_bonus = min(0.2, max(0, rsi_slope / 15 + price_change_5m / 100))
-                volume_bonus = 0.1 if volume_surge else 0.0
+                base_confidence = BotConfig.MOMENTUM_BASE_CONFIDENCE  # 0.5
+                rsi_distance = BotConfig.MOMENTUM_RSI_BUY_THRESHOLD - current_rsi
+                trend_bonus = BotConfig.MOMENTUM_TREND_CONFIDENCE_BONUS if price_trend > 0 else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 30) + squeeze_bonus + momentum_bonus + volume_bonus)
-                reason = f'FIXED TTM-Squeeze BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), squeeze={squeeze_on}, momentum={price_change_5m:.2f}%'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + trend_bonus)
+                reason = f'FIXED Quick-momentum BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_trend:.2f}%'
                 
             # FIXED SELL SIGNAL - MUCH MORE PERMISSIVE
-            elif (current_rsi > 45 and  # FIXED: 45 instead of 55
-                  # FIXED: Much more permissive squeeze requirements
-                  (squeeze_on or bb_position > 0.3) and  # Either in squeeze OR not at lower BB
-                  # FIXED: Much more permissive momentum requirements
-                  (rsi_slope < 2.0 or price_change_5m < 1.5)):  # Either RSI not rising fast OR price not rising fast
+            elif (current_rsi > BotConfig.MOMENTUM_RSI_SELL_THRESHOLD and  # Overbought condition
+                  not ma_crossover and  # Fast MA below slow MA
+                  abs(price_trend) >= BotConfig.MOMENTUM_MIN_PRICE_CHANGE):  # Minimum price change
                 
                 action = 'sell'
                 
                 # FIXED: More generous confidence calculation
-                base_confidence = BotConfig.TTM_BASE_CONFIDENCE  # 0.6
-                rsi_distance = current_rsi - 45  # FIXED: Use 45 as threshold
-                squeeze_bonus = BotConfig.TTM_SQUEEZE_CONFIDENCE_BONUS if squeeze_on else 0.1
-                momentum_bonus = min(0.2, max(0, abs(rsi_slope) / 15 + abs(price_change_5m) / 100))
-                volume_bonus = 0.1 if volume_surge else 0.0
+                base_confidence = BotConfig.MOMENTUM_BASE_CONFIDENCE  # 0.5
+                rsi_distance = current_rsi - BotConfig.MOMENTUM_RSI_SELL_THRESHOLD
+                trend_bonus = BotConfig.MOMENTUM_TREND_CONFIDENCE_BONUS if price_trend < 0 else 0.0
                 
-                confidence = min(0.9, base_confidence + (rsi_distance / 30) + squeeze_bonus + momentum_bonus + volume_bonus)
-                reason = f'FIXED TTM-Squeeze SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), squeeze={squeeze_on}, momentum={price_change_5m:.2f}%'
+                confidence = min(0.9, base_confidence + (rsi_distance / 30) + trend_bonus)
+                reason = f'FIXED Quick-momentum SELL: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_trend:.2f}%'
 
             # Set stop loss and take profit using centralized parameters
             if action == 'buy':
-                stop_loss = current_price * (1 - BotConfig.TTM_STOP_LOSS)
-                take_profit = current_price * (1 + BotConfig.TTM_PROFIT_TARGET)
+                stop_loss = current_price * (1 - BotConfig.MOMENTUM_STOP_LOSS)
+                take_profit = current_price * (1 + BotConfig.MOMENTUM_PROFIT_TARGET)
             elif action == 'sell':
-                stop_loss = current_price * (1 + BotConfig.TTM_STOP_LOSS)
-                take_profit = current_price * (1 - BotConfig.TTM_PROFIT_TARGET)
+                stop_loss = current_price * (1 + BotConfig.MOMENTUM_STOP_LOSS)
+                take_profit = current_price * (1 - BotConfig.MOMENTUM_PROFIT_TARGET)
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -118,13 +167,12 @@ class TTMSqueezeStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,
-                'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes',
+                'max_hold_time': BotConfig.MOMENTUM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
                 'rsi': current_rsi,
                 'rsi_slope': rsi_slope,
-                'price_change_5m': price_change_5m,
-                'squeeze_on': squeeze_on,
-                'volume_surge': volume_surge
+                'price_trend': price_trend,
+                'ma_crossover': ma_crossover
             }
 
         except Exception as e:
@@ -139,9 +187,13 @@ class TTMSqueezeStrategy:
             'stop_loss': 0,
             'take_profit': 0,
             'reason': reason,
-            'max_hold_time': 1800,
-            'target_hold': '30 minutes'
+            'max_hold_time': 1200,
+            'target_hold': '20 minutes'
         }
+    
+    def _calculate_ema(self, data: pd.Series, period: int) -> pd.Series:
+        """Calculate Exponential Moving Average"""
+        return data.ewm(span=period, adjust=False).mean()
     
     def _calculate_rsi(self, data: pd.Series, period: int) -> pd.Series:
         """Calculate RSI"""
@@ -160,46 +212,31 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return pd.Series([50] * len(data), index=data.index)
     
-    def _calculate_bollinger_bands(self, data: pd.Series, period: int, std_dev: float):
-        """Calculate Bollinger Bands"""
+    def _calculate_stochastic(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int):
+        """Calculate Stochastic Oscillator"""
         try:
-            sma = data.rolling(window=period).mean()
-            std = data.rolling(window=period).std()
+            lowest_low = low.rolling(window=period).min()
+            highest_high = high.rolling(window=period).max()
             
-            upper_band = sma + (std * std_dev)
-            lower_band = sma - (std * std_dev)
+            k_percent = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+            d_percent = k_percent.rolling(window=3).mean()
             
-            return upper_band.fillna(data), sma.fillna(data), lower_band.fillna(data)
+            return k_percent.fillna(50), d_percent.fillna(50)
         except Exception as e:
-            return data * 1.02, data, data * 0.98
+            return pd.Series([50] * len(close), index=close.index), pd.Series([50] * len(close), index=close.index)
     
-    def _calculate_keltner_channels(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int, multiplier: float):
-        """Calculate Keltner Channels"""
+    def _calculate_macd(self, data: pd.Series, fast: int, slow: int, signal: int):
+        """Calculate MACD"""
         try:
-            typical_price = (high + low + close) / 3
-            atr = self._calculate_atr(high, low, close, period)
+            ema_fast = data.ewm(span=fast, adjust=False).mean()
+            ema_slow = data.ewm(span=slow, adjust=False).mean()
+            macd_line = ema_fast - ema_slow
+            signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+            histogram = macd_line - signal_line
             
-            middle = typical_price.rolling(window=period).mean()
-            upper = middle + (atr * multiplier)
-            lower = middle - (atr * multiplier)
-            
-            return upper.fillna(close), middle.fillna(close), lower.fillna(close)
+            return macd_line.fillna(0), signal_line.fillna(0), histogram.fillna(0)
         except Exception as e:
-            return close * 1.02, close, close * 0.98
-    
-    def _calculate_atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.Series:
-        """Calculate Average True Range"""
-        try:
-            high_low = high - low
-            high_close = np.abs(high - close.shift())
-            low_close = np.abs(low - close.shift())
-            
-            true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-            atr = true_range.rolling(window=period).mean()
-            
-            return atr.fillna(high_low)
-        except Exception as e:
-            return high - low
+            return pd.Series([0] * len(data), index=data.index), pd.Series([0] * len(data), index=data.index), pd.Series([0] * len(data), index=data.index)
 
 # Export the strategy class
-__all__ = ['TTMSqueezeStrategy']
+__all__ = ['QuickMomentumStrategy']
