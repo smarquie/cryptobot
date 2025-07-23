@@ -13,6 +13,8 @@ Based on working code with your specific improvements:
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
+from cryptobot.config import BotConfig
+
 
 class UltraScalpStrategy:
     """IMPROVED Ultra-scalp strategy with SMA, percentage RSI slope, and volume conditions"""
