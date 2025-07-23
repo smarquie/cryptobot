@@ -8,6 +8,8 @@ Based on working code with careful modifications to maintain functionality
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
+from cryptobot.config import BotConfig
+
 
 class FastScalpStrategy:
     """REVISED Fast-scalp strategy - Longer term and more selective"""
