@@ -338,4 +338,4 @@ for strategy in strategies:
 
 if __name__ == "__main__":
     # Run complete test when executed directly
-    run_complete_test()
+    run_complete_test() 
