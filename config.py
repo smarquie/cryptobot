@@ -77,20 +77,20 @@ class BotConfig:
     # ==================== STRATEGY PARAMETERS ====================
 
     # Ultra-Scalp Strategy Parameters
-    ULTRA_SCALP_RSI_BUY_THRESHOLD = 40      # More permissive than 30
-    ULTRA_SCALP_RSI_SELL_THRESHOLD = 60     # More permissive than 70
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 35      # More permissive than 30
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 65     # More permissive than 70
     ULTRA_SCALP_RSI_PERIOD = 7
     ULTRA_SCALP_SMA_PERIOD = 5
     ULTRA_SCALP_BASE_CONFIDENCE = 0.5
     ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 10
     ULTRA_SCALP_MIN_CONFIDENCE = 0.2
-    ULTRA_SCALP_PROFIT_TARGET = 0.0040       # 0.40% profit target
+    ULTRA_SCALP_PROFIT_TARGET = 0.0050       # 0.40% profit target
     ULTRA_SCALP_STOP_LOSS = 0.0020           # 0.20% stop loss
     ULTRA_SCALP_MAX_HOLD_SECONDS = 600       # 10 minutes
 
     # Fast-Scalp Strategy Parameters
-    FAST_SCALP_RSI_BUY_THRESHOLD = 40        # More permissive than 30
-    FAST_SCALP_RSI_SELL_THRESHOLD = 60       # More permissive than 70
+    FAST_SCALP_RSI_BUY_THRESHOLD = 35        # More permissive than 30
+    FAST_SCALP_RSI_SELL_THRESHOLD = 65       # More permissive than 70
     FAST_SCALP_MACD_FAST = 5
     FAST_SCALP_MACD_SLOW = 10
     FAST_SCALP_MACD_SIGNAL = 4
@@ -141,12 +141,12 @@ class BotConfig:
     # ==================== MOMENTUM ANALYSIS ====================
     
     # RSI slope thresholds (much more permissive)
-    RSI_SLOPE_MIN = -3.0  # FIXED: Much more permissive (was -1.0)
-    RSI_SLOPE_MAX = 3.0   # FIXED: Much more permissive (was 1.0)
+    RSI_SLOPE_MIN = 0.0  # FIXED: Much more permissive (was -1.0)
+    RSI_SLOPE_MAX = 0.0   # FIXED: Much more permissive (was 1.0)
     
     # Price change thresholds (much more permissive)
-    PRICE_CHANGE_MIN = -2.0  # FIXED: Much more permissive (was -0.5)
-    PRICE_CHANGE_MAX = 2.0   # FIXED: Much more permissive (was 0.5)
+    PRICE_CHANGE_MIN = 0.0  # FIXED: Much more permissive (was -0.5)
+    PRICE_CHANGE_MAX = 0.0   # FIXED: Much more permissive (was 0.5)
     
     # ==================== CONFIDENCE CALCULATION ====================
     
