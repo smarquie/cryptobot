@@ -10,7 +10,7 @@ import numpy as np
 import random
 import time
 from datetime import datetime, timedelta
-from config import BotConfig
+from cryptobot.config import BotConfig
 import eth_account
 from eth_account.signers.local import LocalAccount
 
