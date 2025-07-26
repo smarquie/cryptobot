@@ -10,10 +10,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from cryptobot.config import BotConfig
-from cryptobot.strategies.ultra_scalp_strategy import UltraScalpStrategy
-from cryptobot.strategies.fast_scalp_strategy import FastScalpStrategy
-from cryptobot.strategies.quick_momentum_strategy import QuickMomentumStrategy
-from cryptobot.strategies.ttm_squeeze_strategy import TTMSqueezeStrategy
+from cryptobot.strategies.ultra_scalp import UltraScalpStrategy
+from cryptobot.strategies.fast_scalp import FastScalpStrategy
+from cryptobot.strategies.quick_momentum import QuickMomentumStrategy
+from cryptobot.strategies.ttm_squeeze import TTMSqueezeStrategy
 
 logger = logging.getLogger(__name__)
 
