@@ -1,4 +1,4 @@
-!/usr/bin/env python3
+# !/usr/bin/env python3
 """
 CONFIG.PY - TRADING PARAMETERS
 Replacement for GitHub repository - FIXED VERSION
