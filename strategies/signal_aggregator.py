@@ -50,8 +50,8 @@ class SignalAggregator:
             'Quick-Momentum': {
                 'timeframe': '1m',
                 'lookback': 20,  # Needs 20 minutes of 1-minute data
-                'max_hold_time': BotConfig.MOMENTUM_MAX_HOLD_SECONDS,
-                'target_hold': f'{BotConfig.MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
+                'max_hold_time': BotConfig.QUICK_MOMENTUM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.QUICK_MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Momentum trading with 1-minute data'
             },
             'TTM-Squeeze': {
