@@ -35,14 +35,23 @@ class BotConfig:
     
     # Maximum number of concurrent positions per symbol
     MAX_POSITIONS_PER_SYMBOL = 4
-    
+
     # ==================== RISK MANAGEMENT ====================
     
     # Position sizing (percentage of available balance)
-    POSITION_SIZE_PERCENT = 25.0  # 25% of balance per trade
+    POSITION_SIZE_PERCENT = 25.0  # 10% of balance per trade
+    
+    # Position sizing limits
+    MIN_POSITION_VALUE = 1000.0  # Minimum $1,000 per trade
+    MAX_POSITION_VALUE = 3500.0  # Maximum $3,500 per trade (35% of $10k)
+    TARGET_POSITION_VALUE = 2500.0  # Target $2,500 per trade (25% of $10k)
     
     # Maximum total risk per trade (percentage)
     MAX_RISK_PERCENT = 2.0  # 2% max risk per trade
+    
+    # Stop loss and take profit defaults
+    DEFAULT_STOP_LOSS_PERCENT = 0.5  # 0.5% stop loss
+    DEFAULT_TAKE_PROFIT_PERCENT = 1.0  # 1.0% take profit
     
     # Stop loss and take profit defaults
     DEFAULT_STOP_LOSS_PERCENT = 0.25  # 0.5% stop loss
