@@ -63,6 +63,7 @@ class BotConfig:
     DATA_COLLECTION_ENABLED = True
     INITIAL_DATA_COLLECTION_MINUTES = 20  # FIXED: Keep 20-minute requirement
     DATA_VALIDATION_ENABLED = True
+    MIN_DATA_MINUTES = 30  # FIXED: Added missing attribute for data collection
     
     # ==================== STRATEGY PARAMETERS ====================
     
