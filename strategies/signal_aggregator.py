@@ -57,8 +57,8 @@ class SignalAggregator:
             'TTM-Squeeze': {
                 'timeframe': '1m',
                 'lookback': 20,  # Needs 20 minutes of 1-minute data
-                'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,
-                'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes',
+                'max_hold_time': BotConfig.TTM_SQUEEZE_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.TTM_SQUEEZE_MAX_HOLD_SECONDS//60} minutes',
                 'description': 'Squeeze breakout with 1-minute data'
             }
         }
