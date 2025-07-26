@@ -230,6 +230,56 @@ class BotConfig:
     MAX_POSITION_VALUE = 10000   # Maximum position value in USD (example)
     TARGET_POSITION_VALUE = 1000 # Target position value in USD (example)
 
+    # ==================== DYNAMIC RISK MANAGEMENT ====================
+    DYNAMIC_STOP_LOSS_PERCENT = 0.5  # 0.5% stop loss
+    DYNAMIC_TAKE_PROFIT_PERCENT = 1.0  # 1.0% take profit
+    
+    # Dynamic strategy-specific stop loss and take profit
+    DYNAMIC_ULTRA_SCALP_SL = 0.25  # 0.25% stop loss
+    DYNAMIC_ULTRA_SCALP_TP = 0.50  # 0.50% take profit
+    
+    DYNAMIC_FAST_SCALP_SL = 0.30  # 0.30% stop loss
+    DYNAMIC_FAST_SCALP_TP = 0.60  # 0.60% take profit
+    
+    DYNAMIC_QUICK_MOMENTUM_SL = 0.40  # 0.40% stop loss
+    DYNAMIC_QUICK_MOMENTUM_TP = 0.80  # 0.80% take profit
+    
+    DYNAMIC_TTM_SQUEEZE_SL = 0.50  # 0.50% stop loss
+    DYNAMIC_TTM_SQUEEZE_TP = 1.00  # 1.00% take profit
+
+    # ==================== MOMENTUM STRATEGY PARAMETERS ====================
+    MOMENTUM_MAX_HOLD_SECONDS = 1800  # 30 minutes
+    MOMENTUM_FAST_MA_PERIOD = 3
+    MOMENTUM_SLOW_MA_PERIOD = 8
+    MOMENTUM_TREND_PERIODS = 10
+    MOMENTUM_RSI_BUY_THRESHOLD = 55
+    MOMENTUM_RSI_SELL_THRESHOLD = 45
+    MOMENTUM_MIN_PRICE_CHANGE = 0.02
+    MOMENTUM_BASE_CONFIDENCE = 0.5
+    MOMENTUM_TREND_CONFIDENCE_BONUS = 0.2
+    MOMENTUM_STOP_LOSS = 0.20
+    MOMENTUM_PROFIT_TARGET = 0.40
+
+    # ==================== FAST SCALP ADDITIONAL PARAMETERS ====================
+    FAST_SCALP_VOLUME_PERIOD = 10
+    FAST_SCALP_VOLUME_MULTIPLIER = 1.05
+    FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
+    FAST_SCALP_RSI_BUY_THRESHOLD = 40
+    FAST_SCALP_RSI_SELL_THRESHOLD = 60
+    FAST_SCALP_STOP_LOSS = 0.20
+    FAST_SCALP_PROFIT_TARGET = 0.40
+
+    # ==================== ULTRA SCALP ADDITIONAL PARAMETERS ====================
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 40
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 60
+    ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 20
+    ULTRA_SCALP_STOP_LOSS = 0.25
+    ULTRA_SCALP_PROFIT_TARGET = 0.50
+
+    # ==================== API AND EXCHANGE SETTINGS ====================
+    HYPERLIQUID_PRIVATE_KEY = "YOUR_PRIVATE_KEY_HERE"
+    MIN_DATA_MINUTES = 20  # Minimum data minutes for analysis
+
     # ==================== STRATEGY PARAMETERS ====================
     # Ultra-Scalp Strategy (already present)
     # Fast-Scalp Strategy
