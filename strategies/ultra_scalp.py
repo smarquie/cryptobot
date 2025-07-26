@@ -7,7 +7,7 @@ All parameters moved to config.py for centralized management
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
-from config_centralized import BotConfig
+from config import BotConfig
 
 class UltraScalpStrategy:
     """Ultra-scalp strategy using centralized parameters from config"""
