@@ -5,7 +5,7 @@ Allows real-time adjustment of risk parameters while bot runs
 
 import logging
 from typing import Dict, Any
-from config import BotConfig
+from cryptobot.config import BotConfig
 
 logger = logging.getLogger(__name__)
 
