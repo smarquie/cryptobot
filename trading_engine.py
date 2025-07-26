@@ -36,7 +36,8 @@ class TradingEngine:
         self.wallet = validate_private_key(self.private_key)
         self.exchange = ExchangeInterface(mode=BotConfig.MODE, private_key=self.private_key)
         self.portfolio = Portfolio()
-        self.aggregator = SignalAggregator()
+        #self.aggregator = SignalAggregator()
+        self.aggregator = SignalAggregator(portfolio=self.portfolio)
         self.telegram = TelegramNotifier()
         self.is_running = False
         self.cycle_count = 0
