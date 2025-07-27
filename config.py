@@ -98,13 +98,29 @@ class BotConfig:
     FAST_SCALP_MAX_HOLD_SECONDS = 900        # 15 minutes
     
     # Quick-Momentum Strategy (Golden Cross Pattern Detection)
-    QUICK_MOMENTUM_SHORT_EMA_PERIOD = 5    # Short EMA for GCP detection
-    QUICK_MOMENTUM_MEDIUM_EMA_PERIOD = 10  # Medium EMA for GCP detection  
-    QUICK_MOMENTUM_LONG_EMA_PERIOD = 20    # Long EMA for GCP detection
-    QUICK_MOMENTUM_GCP_MIN_MOMENTUM = 0.5  # Minimum momentum for GCP confirmation
-    QUICK_MOMENTUM_GCP_CONFIDENCE_THRESHOLD = 0.2  # GCP pattern confidence threshold
-    QUICK_MOMENTUM_MIN_CONFIDENCE = 0.2  # Overall strategy confidence threshold
-    QUICK_MOMENTUM_MAX_HOLD_SECONDS = 1200  # 20 minutes
+    # GCP Pattern Detection Parameters
+    QUICK_MOMENTUM_GROWTH_DETECTION_WINDOW = 20      # Window size for growth phase detection
+    QUICK_MOMENTUM_PLATEAU_DETECTION_WINDOW = 15     # Window size for plateau phase detection
+    QUICK_MOMENTUM_MIN_GROWTH_PERCENTAGE = 0.12      # Minimum growth/decline percentage (12%)
+    QUICK_MOMENTUM_GROWTH_CONSISTENCY_THRESHOLD = 0.35  # Growth consistency requirement (35%)
+    QUICK_MOMENTUM_PLATEAU_VOLATILITY_THRESHOLD = 0.7   # Plateau volatility tolerance (70%)
+    QUICK_MOMENTUM_PLATEAU_DRIFT_THRESHOLD = 0.5        # Plateau drift tolerance (50%)
+    QUICK_MOMENTUM_MIN_PLATEAU_DURATION = 4             # Minimum plateau duration (4 periods)
+    
+    # GCP Confidence Thresholds
+    QUICK_MOMENTUM_MIN_PATTERN_CONFIDENCE = 0.25       # Minimum GCP pattern confidence (25%)
+    QUICK_MOMENTUM_STRONG_PATTERN_CONFIDENCE = 0.5      # Strong pattern threshold (50%)
+    
+    # Technical Confirmation Settings
+    QUICK_MOMENTUM_USE_TECHNICAL_CONFIRMATION = True    # Enable technical confirmation
+    QUICK_MOMENTUM_CONFIRMATION_WEIGHT = 0.3            # Technical confirmation weight (30%)
+    QUICK_MOMENTUM_GCP_WEIGHT = 0.7                     # GCP pattern weight (70%)
+    
+    # Risk Management Parameters
+    QUICK_MOMENTUM_MIN_CONFIDENCE = 0.2                 # Overall strategy confidence threshold
+    QUICK_MOMENTUM_STOP_LOSS = 0.002                    # 0.2% stop loss
+    QUICK_MOMENTUM_PROFIT_TARGET = 0.004                # 0.4% take profit
+    QUICK_MOMENTUM_MAX_HOLD_SECONDS = 1200              # 20 minutes max hold
     
     # TTM-Squeeze Strategy
     TTM_SQUEEZE_RSI_PERIOD = 14
