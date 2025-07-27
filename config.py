@@ -104,7 +104,7 @@ class BotConfig:
     QUICK_MOMENTUM_MIN_GROWTH_PERCENTAGE = 0.12      # Minimum growth/decline percentage (12%)
     QUICK_MOMENTUM_GROWTH_CONSISTENCY_THRESHOLD = 0.35  # Growth consistency requirement (35%)
     QUICK_MOMENTUM_PLATEAU_VOLATILITY_THRESHOLD = 0.7   # Plateau volatility tolerance (70%)
-    QUICK_MOMENTUM_PLATEAU_DRIFT_THRESHOLD = 0.5        # Plateau drift tolerance (50%)
+    QUICK_MOMENTUM_PLATEAU_DRIFT_THRESHOLD = 0.5        # Plateau drift tolerance (0.5% per period)
     QUICK_MOMENTUM_MIN_PLATEAU_DURATION = 4             # Minimum plateau duration (4 periods)
     
     # GCP Confidence Thresholds
