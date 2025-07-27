@@ -7,7 +7,7 @@ All parameters moved to config.py for centralized management
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
-from config import BotConfig
+from cryptobot.config import BotConfig
 
 class FastScalpStrategy:
     """Fast-scalp strategy using centralized parameters from config"""
