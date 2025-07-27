@@ -64,11 +64,24 @@ class PureGCPDetector:
         if np.mean(prices) == 0:
             return 0.0
             
+        # Calculate volatility as percentage of mean price
         volatility = np.std(prices) / np.mean(prices)
-        drift = abs(np.polyfit(np.arange(len(prices)), prices, 1)[0]) / np.mean(prices)
         
+        # Calculate drift as percentage change per period
+        # np.polyfit returns slope in price units per time unit
+        # Convert to percentage change per period
+        linear_slope = np.polyfit(np.arange(len(prices)), prices, 1)[0]
+        mean_price = np.mean(prices)
+        drift_percentage_per_period = (linear_slope / mean_price) * 100  # Convert to percentage
+        
+        # Score based on how close drift is to zero (consolidation)
         volatility_score = max(0, 1 - (volatility / self.config["plateau_volatility_threshold"]))
-        drift_score = max(0, 1 - (drift / self.config["plateau_drift_threshold"]))
+        
+        # Drift score: closer to zero = better consolidation
+        # Allow slight negative drift (slight decline during consolidation is normal)
+        drift_threshold = self.config["plateau_drift_threshold"]  # e.g., 0.5% per period
+        drift_score = max(0, 1 - (abs(drift_percentage_per_period) / drift_threshold))
+        
         return (volatility_score * 0.6) + (drift_score * 0.4)  # Weight volatility more
     
     def _detect_growth_phase(self, prices: np.ndarray) -> Dict:
