@@ -78,7 +78,10 @@ class BotConfig:
     ULTRA_SCALP_PROFIT_TARGET = 0.0060       # 0.50% profit target
     ULTRA_SCALP_STOP_LOSS = 0.0025           # 0.20% stop loss
     ULTRA_SCALP_MAX_HOLD_SECONDS = 600       # 10 minutes
-    
+    ULTRA_SCALP_STOP_LOSS_PERCENT = 0.25     # 0.25% stop loss percentage
+    ULTRA_SCALP_TAKE_PROFIT_PERCENT = 0.60   # 0.60% take profit percentage
+
+   
     # Fast-Scalp Strategy
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 8
