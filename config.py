@@ -86,12 +86,12 @@ class BotConfig:
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 8
     FAST_SCALP_EMA_SLOW = 21
-    FAST_SCALP_RSI_BUY_THRESHOLD = 40        # RSI oversold threshold
-    FAST_SCALP_RSI_SELL_THRESHOLD = 50       # RSI overbought threshold
+    FAST_SCALP_RSI_BUY_THRESHOLD = 45        # RSI oversold threshold
+    FAST_SCALP_RSI_SELL_THRESHOLD = 55       # RSI overbought threshold
     FAST_SCALP_MACD_FAST = 5
     FAST_SCALP_MACD_SLOW = 10
     FAST_SCALP_MACD_SIGNAL = 4
-    FAST_SCALP_VOLUME_MULTIPLIER = 1.05      # Volume surge threshold
+    FAST_SCALP_VOLUME_MULTIPLIER = 1.02      # Volume surge threshold
     FAST_SCALP_VOLUME_PERIOD = 10
     FAST_SCALP_BASE_CONFIDENCE = 0.4
     FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
@@ -131,8 +131,8 @@ class BotConfig:
     TTM_SQUEEZE_BB_STD = 2.0
     TTM_SQUEEZE_KC_PERIOD = 20
     TTM_SQUEEZE_KC_MULTIPLIER = 1.5
-    TTM_SQUEEZE_RSI_BUY_THRESHOLD = 40  # RSI oversold threshold
-    TTM_SQUEEZE_RSI_SELL_THRESHOLD = 60  # RSI overbought threshold
+    TTM_SQUEEZE_RSI_BUY_THRESHOLD = 45  # RSI oversold threshold
+    TTM_SQUEEZE_RSI_SELL_THRESHOLD = 55  # RSI overbought threshold
     TTM_SQUEEZE_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
     TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # 30 minutes
     
@@ -145,12 +145,12 @@ class BotConfig:
     # ==================== MOMENTUM ANALYSIS ====================
     
     # RSI slope thresholds (much more permissive)
-    RSI_SLOPE_MIN = 0.0  # FIXED: Much more permissive (was -1.0)
-    RSI_SLOPE_MAX = 0.0   # FIXED: Much more permissive (was 1.0)
+    RSI_SLOPE_MIN = -0.2  # FIXED: Much more permissive (was 0.0)
+    RSI_SLOPE_MAX = 0.2   # FIXED: Much more permissive (was 0.0)
     
     # Price change thresholds (much more permissive)
-    PRICE_CHANGE_MIN = 0.0  # FIXED: Much more permissive (was -0.5)
-    PRICE_CHANGE_MAX = 0.0   # FIXED: Much more permissive (was 0.5)
+    PRICE_CHANGE_MIN = -0.1  # FIXED: Much more permissive (was -0.5)
+    PRICE_CHANGE_MAX = 0.1   # FIXED: Much more permissive (was 0.5)
     
     # ==================== CONFIDENCE CALCULATION ====================
     
