@@ -68,37 +68,48 @@ class BotConfig:
     # ==================== STRATEGY PARAMETERS ====================
     
     # Ultra-Scalp Strategy
-    ULTRA_SCALP_RSI_PERIOD = 7
-    ULTRA_SCALP_SMA_PERIOD = 5
-    ULTRA_SCALP_RSI_BUY_THRESHOLD = 40      # RSI oversold threshold
-    ULTRA_SCALP_RSI_SELL_THRESHOLD = 60     # RSI overbought threshold
-    ULTRA_SCALP_BASE_CONFIDENCE = 0.5
-    ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 10
-    ULTRA_SCALP_MIN_CONFIDENCE = 0.2
-    ULTRA_SCALP_PROFIT_TARGET = 0.0060       # 0.50% profit target
-    ULTRA_SCALP_STOP_LOSS = 0.0025           # 0.20% stop loss
-    ULTRA_SCALP_MAX_HOLD_SECONDS = 600       # 10 minutes
-    ULTRA_SCALP_STOP_LOSS_PERCENT = 0.25     # 0.25% stop loss percentage
-    ULTRA_SCALP_TAKE_PROFIT_PERCENT = 0.60   # 0.60% take profit percentage
+    ULTRA_SCALP_RSI_PERIOD = 14
+    ULTRA_SCALP_SMA_PERIOD = 20
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 30
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 70
+    ULTRA_SCALP_RSI_SLOPE_THRESHOLD = 0.5  # FIXED: Added missing parameter
+    ULTRA_SCALP_PRICE_CHANGE_THRESHOLD = 0.5
+    ULTRA_SCALP_BASE_CONFIDENCE = 0.6
+    ULTRA_SCALP_RSI_DISTANCE_DIVISOR = 10
+    ULTRA_SCALP_MOMENTUM_BONUS_MAX = 0.2
+    ULTRA_SCALP_VOLUME_BONUS = 0.1
+    ULTRA_SCALP_STOP_LOSS_PERCENT = 0.25
+    ULTRA_SCALP_TAKE_PROFIT_PERCENT = 0.60
+    ULTRA_SCALP_MAX_HOLD_SECONDS = 600
 
    
     # Fast-Scalp Strategy
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 8
     FAST_SCALP_EMA_SLOW = 21
-    FAST_SCALP_RSI_BUY_THRESHOLD = 40        # RSI oversold threshold
-    FAST_SCALP_RSI_SELL_THRESHOLD = 60       # RSI overbought threshold
+    FAST_SCALP_RSI_BUY_THRESHOLD = 45        # RSI oversold threshold (more permissive)
+    FAST_SCALP_RSI_SELL_THRESHOLD = 55       # RSI overbought threshold (more permissive)
     FAST_SCALP_MACD_FAST = 5
     FAST_SCALP_MACD_SLOW = 10
     FAST_SCALP_MACD_SIGNAL = 4
-    FAST_SCALP_VOLUME_MULTIPLIER = 1.01      # Volume surge threshold
+    FAST_SCALP_VOLUME_MULTIPLIER = 1.05      # Volume surge threshold
     FAST_SCALP_VOLUME_PERIOD = 10
+    FAST_SCALP_VOLUME_AVERAGE_PERIOD = 10    # FIXED: Added missing parameter
+    FAST_SCALP_VOLUME_SURGE_MULTIPLIER = 1.01  # Volume surge multiplier (more permissive)
+    FAST_SCALP_RSI_DISTANCE_DIVISOR = 10     # RSI distance divisor
+    FAST_SCALP_MACD_BONUS_MAX = 0.3          # MACD bonus maximum
+    FAST_SCALP_VOLUME_BONUS = 0.1            # Volume bonus
     FAST_SCALP_BASE_CONFIDENCE = 0.4
     FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
     FAST_SCALP_MIN_CONFIDENCE = 0.2
     FAST_SCALP_PROFIT_TARGET = 0.0060
     FAST_SCALP_STOP_LOSS = 0.0025
+    FAST_SCALP_STOP_LOSS_PERCENT = 0.25      # 0.25% stop loss percentage
+    FAST_SCALP_TAKE_PROFIT_PERCENT = 0.60    # 0.60% take profit percentage
     FAST_SCALP_MAX_HOLD_SECONDS = 900        # 15 minutes
+    FAST_SCALP_RSI_OVERSOLD = 45             # FIXED: Added missing parameter
+    FAST_SCALP_RSI_OVERBOUGHT = 55           # FIXED: Added missing parameter
+    FAST_SCALP_PRICE_CHANGE_THRESHOLD = 0.5  # FIXED: Added missing parameter
     
     # Quick-Momentum Strategy (Golden Cross Pattern Detection)
     # GCP Pattern Detection Parameters
@@ -131,10 +142,14 @@ class BotConfig:
     TTM_SQUEEZE_BB_STD = 2.0
     TTM_SQUEEZE_KC_PERIOD = 20
     TTM_SQUEEZE_KC_MULTIPLIER = 1.5
-    TTM_SQUEEZE_RSI_BUY_THRESHOLD = 45  # RSI oversold threshold
-    TTM_SQUEEZE_RSI_SELL_THRESHOLD = 55  # RSI overbought threshold
-    TTM_SQUEEZE_MIN_CONFIDENCE = 0.2  # FIXED: Much lower (was 0.4)
+    TTM_SQUEEZE_RSI_BUY_THRESHOLD = 45  # RSI oversold threshold (more permissive)
+    TTM_SQUEEZE_RSI_SELL_THRESHOLD = 55  # RSI overbought threshold (more permissive)
+    TTM_SQUEEZE_MIN_CONFIDENCE = 0.15  # Much lower confidence threshold
     TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # 30 minutes
+    TTM_SQUEEZE_BASE_CONFIDENCE = 0.6   # Base confidence for TTM-Squeeze
+    TTM_SQUEEZE_SQUEEZE_BONUS = 0.2     # Bonus for squeeze detection
+    TTM_SQUEEZE_MOMENTUM_BONUS = 0.1    # Bonus for momentum confirmation
+    TTM_MAX_HOLD_SECONDS = 1800          # FIXED: Added missing parameter (alias for TTM_SQUEEZE_MAX_HOLD_SECONDS)
     
     # ==================== VOLUME ANALYSIS ====================
     
@@ -145,12 +160,12 @@ class BotConfig:
     # ==================== MOMENTUM ANALYSIS ====================
     
     # RSI slope thresholds (much more permissive)
-    RSI_SLOPE_MIN = -0.1  # FIXED: Much more permissive (was 0.0)
-    RSI_SLOPE_MAX = 0.1   # FIXED: Much more permissive (was 0.0)
+    RSI_SLOPE_MIN = -1.0  # FIXED: Much more permissive (was -0.5)
+    RSI_SLOPE_MAX = 1.0   # FIXED: Much more permissive (was 0.5)
     
     # Price change thresholds (much more permissive)
-    PRICE_CHANGE_MIN = -0.1  # FIXED: Much more permissive (was -0.5)
-    PRICE_CHANGE_MAX = 0.1   # FIXED: Much more permissive (was 0.5)
+    PRICE_CHANGE_MIN = -1.0  # FIXED: Much more permissive (was -0.5)
+    PRICE_CHANGE_MAX = 1.0   # FIXED: Much more permissive (was 0.5)
     
     # ==================== CONFIDENCE CALCULATION ====================
     
@@ -200,7 +215,7 @@ class BotConfig:
     # ==================== ADVANCED SETTINGS ====================
     
     # Data validation settings
-    MIN_DATA_POINTS = 5  # FIXED: Much lower (was 20)
+    MIN_DATA_POINTS = 20  # FIXED: Much lower (was 20)
     MAX_DATA_AGE_SECONDS = 300  # 5 minutes
     
     # Signal aggregation settings
