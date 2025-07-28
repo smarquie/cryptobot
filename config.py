@@ -70,8 +70,8 @@ class BotConfig:
     # Ultra-Scalp Strategy
     ULTRA_SCALP_RSI_PERIOD = 7
     ULTRA_SCALP_SMA_PERIOD = 5
-    ULTRA_SCALP_RSI_BUY_THRESHOLD = 35      # RSI oversold threshold
-    ULTRA_SCALP_RSI_SELL_THRESHOLD = 65     # RSI overbought threshold
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 40      # RSI oversold threshold
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 60     # RSI overbought threshold
     ULTRA_SCALP_BASE_CONFIDENCE = 0.5
     ULTRA_SCALP_RSI_CONFIDENCE_FACTOR = 10
     ULTRA_SCALP_MIN_CONFIDENCE = 0.2
@@ -86,12 +86,12 @@ class BotConfig:
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 8
     FAST_SCALP_EMA_SLOW = 21
-    FAST_SCALP_RSI_BUY_THRESHOLD = 45        # RSI oversold threshold
-    FAST_SCALP_RSI_SELL_THRESHOLD = 55       # RSI overbought threshold
+    FAST_SCALP_RSI_BUY_THRESHOLD = 40        # RSI oversold threshold
+    FAST_SCALP_RSI_SELL_THRESHOLD = 60       # RSI overbought threshold
     FAST_SCALP_MACD_FAST = 5
     FAST_SCALP_MACD_SLOW = 10
     FAST_SCALP_MACD_SIGNAL = 4
-    FAST_SCALP_VOLUME_MULTIPLIER = 1.02      # Volume surge threshold
+    FAST_SCALP_VOLUME_MULTIPLIER = 1.01      # Volume surge threshold
     FAST_SCALP_VOLUME_PERIOD = 10
     FAST_SCALP_BASE_CONFIDENCE = 0.4
     FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
@@ -121,8 +121,8 @@ class BotConfig:
     
     # Risk Management Parameters
     QUICK_MOMENTUM_MIN_CONFIDENCE = 0.2                 # Overall strategy confidence threshold
-    QUICK_MOMENTUM_STOP_LOSS = 0.002                    # 0.2% stop loss
-    QUICK_MOMENTUM_PROFIT_TARGET = 0.004                # 0.4% take profit
+    QUICK_MOMENTUM_STOP_LOSS = 0.004                    # 0.4% stop loss
+    QUICK_MOMENTUM_PROFIT_TARGET = 0.008                # 0.8% take profit
     QUICK_MOMENTUM_MAX_HOLD_SECONDS = 1200              # 20 minutes max hold
     
     # TTM-Squeeze Strategy
@@ -140,13 +140,13 @@ class BotConfig:
     
     # Volume surge thresholds (much more permissive)
     VOLUME_SURGE_THRESHOLD = 1.01  # FIXED: Much lower (was 1.2-1.5)
-    VOLUME_AVERAGE_PERIOD = 5  # FIXED: Shorter period (was 10-20)
+    VOLUME_AVERAGE_PERIOD = 7  # FIXED: Shorter period (was 10-20)
     
     # ==================== MOMENTUM ANALYSIS ====================
     
     # RSI slope thresholds (much more permissive)
-    RSI_SLOPE_MIN = -0.2  # FIXED: Much more permissive (was 0.0)
-    RSI_SLOPE_MAX = 0.2   # FIXED: Much more permissive (was 0.0)
+    RSI_SLOPE_MIN = -0.1  # FIXED: Much more permissive (was 0.0)
+    RSI_SLOPE_MAX = 0.1   # FIXED: Much more permissive (was 0.0)
     
     # Price change thresholds (much more permissive)
     PRICE_CHANGE_MIN = -0.1  # FIXED: Much more permissive (was -0.5)
