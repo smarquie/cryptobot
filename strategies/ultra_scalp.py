@@ -51,7 +51,7 @@ class UltraScalpStrategy:
             reason = 'No signal'
             
             # BUY SIGNAL using config parameters
-            if (current_rsi < BotConfig.ULTRA_SCALP_RSI_OVERSOLD and
+            if (current_rsi < BotConfig.ULTRA_SCALP_RSI_BUY_THRESHOLD and
                 (rsi_slope > BotConfig.ULTRA_SCALP_RSI_SLOPE_THRESHOLD or 
                  price_change_1m > BotConfig.ULTRA_SCALP_PRICE_CHANGE_THRESHOLD)):
                 
@@ -59,7 +59,7 @@ class UltraScalpStrategy:
                 
                 # Confidence calculation using config parameters
                 base_confidence = BotConfig.ULTRA_SCALP_BASE_CONFIDENCE
-                rsi_distance = BotConfig.ULTRA_SCALP_RSI_OVERSOLD - current_rsi
+                rsi_distance = BotConfig.ULTRA_SCALP_RSI_BUY_THRESHOLD - current_rsi
                 momentum_bonus = min(BotConfig.ULTRA_SCALP_MOMENTUM_BONUS_MAX, 
                                    max(0, rsi_slope / 10 + price_change_1m / 100))
                 volume_bonus = BotConfig.ULTRA_SCALP_VOLUME_BONUS if volume_surge else 0.0
@@ -68,7 +68,7 @@ class UltraScalpStrategy:
                 reason = f'Ultra-scalp BUY: RSI={current_rsi:.1f}(slope:{rsi_slope:.1f}), momentum={price_change_1m:.2f}%'
                 
             # SELL SIGNAL using config parameters
-            elif (current_rsi > BotConfig.ULTRA_SCALP_RSI_OVERBOUGHT and
+            elif (current_rsi > BotConfig.ULTRA_SCALP_RSI_SELL_THRESHOLD and
                   (rsi_slope < -BotConfig.ULTRA_SCALP_RSI_SLOPE_THRESHOLD or 
                    price_change_1m < -BotConfig.ULTRA_SCALP_PRICE_CHANGE_THRESHOLD)):
                 
@@ -76,7 +76,7 @@ class UltraScalpStrategy:
                 
                 # Confidence calculation using config parameters
                 base_confidence = BotConfig.ULTRA_SCALP_BASE_CONFIDENCE
-                rsi_distance = current_rsi - BotConfig.ULTRA_SCALP_RSI_OVERBOUGHT
+                rsi_distance = current_rsi - BotConfig.ULTRA_SCALP_RSI_SELL_THRESHOLD
                 momentum_bonus = min(BotConfig.ULTRA_SCALP_MOMENTUM_BONUS_MAX, 
                                    max(0, abs(rsi_slope) / 10 + abs(price_change_1m) / 100))
                 volume_bonus = BotConfig.ULTRA_SCALP_VOLUME_BONUS if volume_surge else 0.0
