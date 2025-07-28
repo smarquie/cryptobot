@@ -57,7 +57,7 @@ class TelegramNotifier:
     def _send_startup_message(self):
         """Send startup message to Telegram"""
         message = (
-            f"🚀 *Trading Bot Started*\n"
+            f"🚀 <b>Trading Bot Started</b>\n"
             f"📅 Time: {datetime.now().strftime('%H:%M:%S')}\n"
             f"⚙️ Mode: {BotConfig.MODE.upper()}\n"
             f"📊 Symbols: {', '.join(BotConfig.TRADING_SYMBOLS)}"
