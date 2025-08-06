@@ -214,8 +214,8 @@ class BotConfig:
     
     # Exchange API settings
     EXCHANGE_NAME = "coinbase"
-    API_KEY = "YOUR_API_KEY_HERE"
-    API_SECRET = "YOUR_API_SECRET_HERE"
+    API_KEY = "adf66289-037e-4572-9d52-bc3b5510fe8c"
+    API_SECRET = "MHcCAQEEIKUvob/ojYZFRWGl67PUunqATRp6Wwi/1k21e26BywQpoAoGCCqGSM49AwEHoUQDQgAESNTa7Q5ztx/H3xUnHCRyZvudHgTd5KA0i/IHP5wPFPgUf0hYQUV3g+tSK6Z/GhdP7jxsGi92tjGjOcVv/0T+JA=="
     PASSPHRASE = "YOUR_PASSPHRASE_HERE"
     
     # ==================== BACKTESTING ====================
