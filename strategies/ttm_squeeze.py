@@ -183,7 +183,7 @@ class TTMSqueezeStrategy:
                 # Keep original interface elements that might be expected
                 'bb_position': (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if (current_bb_upper - current_bb_lower) > 0 else 0.5,
                 'keltner_position': (current_price - current_kc_lower) / (current_kc_upper - current_kc_lower) if (current_kc_upper - current_kc_lower) > 0 else 0.5,
-                'volume_surge': False  # Original had this, keeping for compatibility
+                'volume_surge': False,  # Original had this, keeping for compatibility
                 'adx': current_adx,
                 'bb_width_percentile': bb_width_percentile,
             }
