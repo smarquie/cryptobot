@@ -328,8 +328,9 @@ class TTMSqueezeStrategy:
             adx = dx.rolling(period).mean()
             
             return adx.fillna(25)  # Default to neutral value if not enough data
+        
         except Exception as e:
-            return pd.Series([25] * len(high), index=high.index
+            return pd.Series([25] * len(high), index=high.index)
 
 # Export the strategy class (same as original)
 __all__ = ['TTMSqueezeStrategy']
