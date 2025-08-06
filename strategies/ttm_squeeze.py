@@ -11,13 +11,13 @@ from typing import Dict, Any
 from cryptobot.config import BotConfig
 
 class TTMSqueezeStrategy:
-    """TTM-Squeeze strategy with config-driven parameters"""
+    """TTM-Squeeze strategy - EXACT replica of complete bot version"""
     
     def __init__(self):
         self.name = "TTM-Squeeze"
-        self.squeeze_history = {}
+        self.squeeze_history = {}  # Track squeeze periods per symbol - CRITICAL for complete bot logic
         
-        # Load ALL parameters from BotConfig
+        # Load parameters from BotConfig
         self.config = {
             # Bollinger Bands
             "bb_period": BotConfig.TTM_BB_PERIOD,
@@ -54,8 +54,7 @@ class TTMSqueezeStrategy:
             
             if len(df) < min_periods:
                 return self._empty_signal(f'Need {min_periods}+ candles, got {len(df)}')
-            
-            # Get current values using config periods
+
             high = df['high']
             low = df['low']
             close = df['close']
@@ -66,7 +65,7 @@ class TTMSqueezeStrategy:
             kc_upper, kc_middle, kc_lower = self._calculate_keltner_channels(high, low, close)
             donchian_midline = self._calculate_donchian_midline(high, low)
             cvd = self._calculate_cvd(volume, close)
-         
+            
             # Current values
             current_price = float(close.iloc[-1])
             current_bb_upper = float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else current_price * 1.02
@@ -112,11 +111,8 @@ class TTMSqueezeStrategy:
             reason = 'No TTM signal'
             
             # COMPLETE BOT ENTRY LOGIC (totally different from original RSI-based logic)
-            if (self._check_squeeze_persistence(symbol, required_periods=2) and  # Check 2 consecutive
-                abs(momentum_normalized) > 0.15):
-            
-            #if (recent_squeeze_count >= 2 and  # Had sufficient squeeze (complete bot: 2 periods)
-            #   abs(momentum_normalized) > 0.15):  # Momentum threshold brought down from 0.3
+            if (self._check_squeeze_persistence(symbol, self.config["squeeze_persistence"]) and
+                abs(momentum_normalized) > self.config["momentum_threshold"]):
                 
                 # Determine direction based on momentum (COMPLETE BOT METHOD)
                 if momentum_normalized > 0:
@@ -142,11 +138,11 @@ class TTMSqueezeStrategy:
 
             # Set stop loss and take profit (COMPLETE BOT VALUES - different from original)
             if action == 'buy':
-                stop_loss = current_price * (1 - 0.0015)  # Complete bot: 0.15%
-                take_profit = current_price * (1 + 0.002)  # Complete bot: 0.20%
+                stop_loss = current_price * (1 - self.config["stop_loss_percent"])
+                take_profit = current_price * (1 + self.config["take_profit_percent"])
             elif action == 'sell':
-                stop_loss = current_price * (1 + 0.0015)  # Complete bot: 0.15%
-                take_profit = current_price * (1 - 0.002)  # Complete bot: 0.20%
+                stop_loss = current_price * (1 + self.config["stop_loss_percent"])
+                take_profit = current_price * (1 - self.config["take_profit_percent"])
             else:
                 stop_loss = current_price
                 take_profit = current_price
@@ -160,8 +156,8 @@ class TTMSqueezeStrategy:
                 'stop_loss': stop_loss,
                 'take_profit': take_profit,
                 'reason': reason,
-                'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,  # Use config parameter
-                'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes',  # Use config parameter
+                'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes',
                 # Additional complete bot data (keeping original interface plus new data)
                 'squeeze_on': squeeze_on,
                 'squeeze_count': recent_squeeze_count,
@@ -176,13 +172,13 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return self._empty_signal(f'TTM Error: {e}')
 
-    def _check_squeeze_persistence(self, symbol: str, required_periods: int = 3) -> bool:
-    """Check if squeeze has persisted for N consecutive periods"""
-    if symbol not in self.squeeze_history or len(self.squeeze_history[symbol]) < required_periods:
-        return False
-    
-    # Check last N periods
-    return all(self.squeeze_history[symbol][-i] for i in range(1, required_periods+1))
+    def _check_squeeze_persistence(self, symbol: str, required_periods: int) -> bool:
+        """Check if squeeze has persisted for N consecutive periods"""
+        if symbol not in self.squeeze_history or len(self.squeeze_history[symbol]) < required_periods:
+            return False
+        
+        # Check last N periods
+        return all(self.squeeze_history[symbol][-i] for i in range(1, required_periods+1))
     
     def _empty_signal(self, reason: str) -> Dict:
         """Same interface as original"""
@@ -194,8 +190,8 @@ class TTMSqueezeStrategy:
             'stop_loss': 0,
             'take_profit': 0,
             'reason': reason,
-            'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,  # Use config parameter
-            'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes'  # Use config parameter
+            'max_hold_time': BotConfig.TTM_MAX_HOLD_SECONDS,
+            'target_hold': f'{BotConfig.TTM_MAX_HOLD_SECONDS//60} minutes'
         }
     
     def _calculate_rsi(self, data: pd.Series, period: int) -> pd.Series:
@@ -215,9 +211,12 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return pd.Series([50] * len(data), index=data.index)
     
-    def _calculate_bollinger_bands(self, data: pd.Series, period: int, std_dev: float):
+    def _calculate_bollinger_bands(self, data: pd.Series, period: int = None, std_dev: float = None):
         """UPDATED - Complete bot method with min_periods handling"""
         try:
+            period = period or self.config["bb_period"]
+            std_dev = std_dev or self.config["bb_std_dev"]
+            
             sma = data.rolling(window=period, min_periods=1).mean()
             std = data.rolling(window=period, min_periods=1).std()
             
@@ -228,9 +227,12 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return data * 1.02, data, data * 0.98
     
-    def _calculate_keltner_channels(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int, atr_multiplier: float):
+    def _calculate_keltner_channels(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int = None, atr_multiplier: float = None):
         """UPDATED - Complete bot method using close SMA (not typical price)"""
         try:
+            period = period or self.config["kc_period"]
+            atr_multiplier = atr_multiplier or self.config["kc_atr_multiplier"]
+            
             # Complete bot uses close SMA, not typical price
             sma = close.rolling(window=period, min_periods=1).mean()
             atr = self._calculate_atr(high, low, close, period)
@@ -242,9 +244,11 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return close * 1.02, close, close * 0.98
     
-    def _calculate_atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.Series:
+    def _calculate_atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int = None) -> pd.Series:
         """UPDATED - Complete bot method with min_periods handling"""
         try:
+            period = period or self.config["kc_period"]  # Use same period as Keltner
+            
             prev_close = close.shift(1)
             tr1 = high - low
             tr2 = abs(high - prev_close)
@@ -257,9 +261,11 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return pd.Series([0] * len(high), index=high.index)
 
-    def _calculate_donchian_midline(self, high: pd.Series, low: pd.Series, period: int) -> pd.Series:
+    def _calculate_donchian_midline(self, high: pd.Series, low: pd.Series, period: int = None) -> pd.Series:
         """NEW METHOD - Complete bot feature missing from original"""
         try:
+            period = period or self.config["donchian_period"]
+            
             highest_high = high.rolling(window=period, min_periods=1).max()
             lowest_low = low.rolling(window=period, min_periods=1).min()
             
@@ -268,7 +274,7 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return pd.Series([0] * len(high), index=high.index)
     
-    def _calculate_cvd(self, volume: pd.Series, close: pd.Series) -> pd.Series:
+    def _calculate_cvd(self, volume: pd.Series, close: pd.Series, period: int = None) -> pd.Series:
         """NEW METHOD - Complete bot feature missing from original"""
         try:
             # Simplified CVD: positive volume on up moves, negative on down moves
