@@ -11,34 +11,62 @@ from typing import Dict, Any
 from cryptobot.config import BotConfig
 
 class TTMSqueezeStrategy:
-    """TTM-Squeeze strategy - EXACT replica of complete bot version"""
+    """TTM-Squeeze strategy with config-driven parameters"""
     
     def __init__(self):
         self.name = "TTM-Squeeze"
-        self.squeeze_history = {}  # Track squeeze periods per symbol - CRITICAL for complete bot logic
+        self.squeeze_history = {}
         
+        # Load ALL parameters from BotConfig
+        self.config = {
+            # Bollinger Bands
+            "bb_period": BotConfig.TTM_BB_PERIOD,
+            "bb_std_dev": BotConfig.TTM_BB_STD_DEV,
+            
+            # Keltner Channels
+            "kc_period": BotConfig.TTM_KC_PERIOD,
+            "kc_atr_multiplier": BotConfig.TTM_KC_ATR_MULTIPLIER,
+            
+            # Donchian
+            "donchian_period": BotConfig.TTM_DONCHIAN_PERIOD,
+            
+            # CVD
+            "cvd_period": BotConfig.TTM_CVD_PERIOD,
+            
+            # Entry conditions
+            "momentum_threshold": BotConfig.TTM_MOMENTUM_THRESHOLD,
+            "squeeze_persistence": BotConfig.TTM_SQUEEZE_PERSISTENCE,
+            
+            # Risk management
+            "stop_loss_percent": BotConfig.TTM_STOP_LOSS_PERCENT,
+            "take_profit_percent": BotConfig.TTM_TAKE_PROFIT_PERCENT
+        }
+    
     def analyze_and_signal(self, df: pd.DataFrame, symbol: str) -> Dict:
         try:
-            if df.empty or len(df) < 20:  # Need more data for complete bot logic
-                return self._empty_signal('Insufficient data for TTM analysis')
-
+            # Use config period for data check
+            min_periods = max(
+                self.config["bb_period"],
+                self.config["kc_period"],
+                self.config["donchian_period"],
+                self.config["cvd_period"]
+            )
+            
+            if len(df) < min_periods:
+                return self._empty_signal(f'Need {min_periods}+ candles, got {len(df)}')
+            
+            # Get current values using config periods
             high = df['high']
             low = df['low']
             close = df['close']
             volume = df['volume']
             
-            # Calculate Bollinger Bands (same parameters as complete bot)
-            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(close, 20, 2.0)
-            
-            # Calculate Keltner Channels (same parameters as complete bot)
-            kc_upper, kc_middle, kc_lower = self._calculate_keltner_channels(high, low, close, 20, 1.5)
-            
-            # Calculate Donchian Midline for momentum (MISSING from original - key complete bot feature)
-            donchian_midline = self._calculate_donchian_midline(high, low, 20)
-            
-            # Calculate CVD (MISSING from original - key complete bot feature)
+            # Calculate indicators with config periods
+            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(close)
+            kc_upper, kc_middle, kc_lower = self._calculate_keltner_channels(high, low, close)
+            donchian_midline = self._calculate_donchian_midline(high, low)
             cvd = self._calculate_cvd(volume, close)
-            
+         
             # Current values
             current_price = float(close.iloc[-1])
             current_bb_upper = float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else current_price * 1.02
@@ -84,8 +112,11 @@ class TTMSqueezeStrategy:
             reason = 'No TTM signal'
             
             # COMPLETE BOT ENTRY LOGIC (totally different from original RSI-based logic)
-            if (recent_squeeze_count >= 2 and  # Had sufficient squeeze (complete bot: 2 periods)
-                abs(momentum_normalized) > 0.3):  # Momentum threshold (complete bot: 0.3)
+            if (self._check_squeeze_persistence(symbol, required_periods=2) and  # Check 2 consecutive
+                abs(momentum_normalized) > 0.15):
+            
+            #if (recent_squeeze_count >= 2 and  # Had sufficient squeeze (complete bot: 2 periods)
+            #   abs(momentum_normalized) > 0.15):  # Momentum threshold brought down from 0.3
                 
                 # Determine direction based on momentum (COMPLETE BOT METHOD)
                 if momentum_normalized > 0:
@@ -145,6 +176,14 @@ class TTMSqueezeStrategy:
         except Exception as e:
             return self._empty_signal(f'TTM Error: {e}')
 
+    def _check_squeeze_persistence(self, symbol: str, required_periods: int = 3) -> bool:
+    """Check if squeeze has persisted for N consecutive periods"""
+    if symbol not in self.squeeze_history or len(self.squeeze_history[symbol]) < required_periods:
+        return False
+    
+    # Check last N periods
+    return all(self.squeeze_history[symbol][-i] for i in range(1, required_periods+1))
+    
     def _empty_signal(self, reason: str) -> Dict:
         """Same interface as original"""
         return {
