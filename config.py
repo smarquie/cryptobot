@@ -1,33 +1,26 @@
 #!/usr/bin/env python3
 """
-CONFIG.PY - TRADING PARAMETERS
-Cleaned version keeping only parameters used by the four strategies
+CONFIG.PY - COMPLETE VERSION FOR 4 STRATEGIES
+Contains ALL parameters used by:
+- Ultra-Scalp
+- TTM-Squeeze 
+- Quick-Momentum
+- Fast-Scalp
 """
 
 class BotConfig:
-    """
-    CENTRALIZED TRADING PARAMETERS
-    Only parameters used by:
-    - Ultra-Scalp
-    - TTM-Squeeze 
-    - Quick-Momentum
-    - Fast-Scalp
-    """
-    
-    # ==================== BASIC SETTINGS ====================
+    # ========== CORE TRADING PARAMETERS ==========
     TRADING_SYMBOLS = ["BTC", "AVAX", "SOL"]
     MODE = "paper"
-    PAPER_INITIAL_BALANCE = 10000
     INITIAL_BALANCE = 10000
-    
-    # ==================== TRADING CYCLE ====================
+    PAPER_INITIAL_BALANCE = 10000
     CYCLE_INTERVAL = 60
-    
-    # ==================== SIGNAL GENERATION ====================
     MIN_CONFIDENCE = 0.2
+    MIN_DATA_POINTS = 20
+    MAX_DATA_AGE_SECONDS = 300
     MAX_POSITIONS_PER_SYMBOL = 4
-    
-    # ==================== RISK MANAGEMENT ====================
+
+    # ========== RISK MANAGEMENT ==========
     POSITION_SIZE_PERCENT = 25.0
     MIN_POSITION_VALUE = 1000.0
     MAX_POSITION_VALUE = 3500.0
@@ -35,18 +28,12 @@ class BotConfig:
     MAX_RISK_PERCENT = 2.0
     DEFAULT_STOP_LOSS_PERCENT = 0.25
     DEFAULT_TAKE_PROFIT_PERCENT = 0.60
-    
-    # ==================== DATA COLLECTION ====================
-    MIN_DATA_POINTS = 20
-    MAX_DATA_AGE_SECONDS = 300
-    
-    # ==================== VOLUME ANALYSIS ====================
-    VOLUME_SURGE_THRESHOLD = 1.01
-    VOLUME_AVERAGE_PERIOD = 7
-    
-    # ==================== ULTRA-SCALP STRATEGY ====================
+
+    # ========== ULTRA-SCALP STRATEGY ==========
     ULTRA_SCALP_RSI_PERIOD = 14
     ULTRA_SCALP_SMA_PERIOD = 20
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 25
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 75
     ULTRA_SCALP_RSI_SLOPE_THRESHOLD = 0.5
     ULTRA_SCALP_PRICE_CHANGE_THRESHOLD = 0.5
     ULTRA_SCALP_RSI_DISTANCE_DIVISOR = 10
@@ -54,12 +41,11 @@ class BotConfig:
     ULTRA_SCALP_VOLUME_BONUS = 0.1
     ULTRA_SCALP_STOP_LOSS_PERCENT = 0.25
     ULTRA_SCALP_TAKE_PROFIT_PERCENT = 0.60
-    ULTRA_SCALP_RSI_BUY_THRESHOLD = 25
-    ULTRA_SCALP_RSI_SELL_THRESHOLD = 75
     ULTRA_SCALP_MAX_HOLD_SECONDS = 300
     ULTRA_SCALP_BASE_CONFIDENCE = 0.5
-    
-    # ==================== FAST-SCALP STRATEGY ====================
+    ULTRA_SCALP_MIN_CANDLE_BODY_RATIO = 0.7
+
+    # ========== FAST-SCALP STRATEGY ==========
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 5
     FAST_SCALP_EMA_SLOW = 13
@@ -77,8 +63,13 @@ class BotConfig:
     FAST_SCALP_RSI_OVERBOUGHT = 60
     FAST_SCALP_BASE_CONFIDENCE = 0.55
     FAST_SCALP_MAX_HOLD_SECONDS = 900
-    
-    # ==================== QUICK-MOMENTUM STRATEGY ====================
+    FAST_SCALP_PRICE_CHANGE_THRESHOLD = 0.5
+    FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
+    FAST_SCALP_MIN_CONFIDENCE = 0.2
+    FAST_SCALP_PROFIT_TARGET = 0.0060
+    FAST_SCALP_STOP_LOSS = 0.0025
+
+    # ========== QUICK-MOMENTUM STRATEGY ==========
     QUICK_MOMENTUM_GROWTH_DETECTION_WINDOW = 20
     QUICK_MOMENTUM_PLATEAU_DETECTION_WINDOW = 15
     QUICK_MOMENTUM_MIN_GROWTH_PERCENTAGE = 0.12
@@ -94,8 +85,11 @@ class BotConfig:
     QUICK_MOMENTUM_STOP_LOSS = 0.004
     QUICK_MOMENTUM_PROFIT_TARGET = 0.008
     QUICK_MOMENTUM_MAX_HOLD_SECONDS = 5400
-    
-    # ==================== TTM-SQUEEZE STRATEGY ====================
+    QUICK_MOMENTUM_VOLUME_REQUIREMENT = 1.5
+    QUICK_MOMENTUM_MIN_PATTERN_DURATION = 30
+    QUICK_MOMENTUM_BASE_CONFIDENCE = 0.3
+
+    # ========== TTM-SQUEEZE STRATEGY ==========
     TTM_BB_PERIOD = 20
     TTM_BB_STD_DEV = 1.5
     TTM_KC_PERIOD = 20
@@ -109,7 +103,23 @@ class BotConfig:
     TTM_ADX_THRESHOLD = 25
     TTM_BB_WIDTH_PERCENTILE = 30
     TTM_MAX_HOLD_SECONDS = 1800
+    TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # Alias for compatibility
     TTM_SQUEEZE_BASE_CONFIDENCE = 0.6
+    TTM_SQUEEZE_SQUEEZE_BONUS = 0.2
+    TTM_SQUEEZE_MOMENTUM_BONUS = 0.1
+    TTM_SQUEEZE_RSI_PERIOD = 14
+    TTM_SQUEEZE_RSI_BUY_THRESHOLD = 45
+    TTM_SQUEEZE_RSI_SELL_THRESHOLD = 55
+    TTM_SQUEEZE_MIN_CONFIDENCE = 0.15
 
-# Export the config class
+    # ========== VOLUME ANALYSIS (Shared) ==========
+    VOLUME_AVERAGE_PERIOD = 7
+    VOLUME_SURGE_THRESHOLD = 1.01
+
+    # ========== POSITION SIZING ==========
+    ULTRA_SCALP_POSITION_SIZE_PERCENT = 15
+    FAST_SCALP_POSITION_SIZE_PERCENT = 20
+    TTM_SQUEEZE_POSITION_SIZE_PERCENT = 25
+    QUICK_MOMENTUM_POSITION_SIZE_PERCENT = 30
+
 __all__ = ['BotConfig']
