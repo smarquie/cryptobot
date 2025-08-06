@@ -70,20 +70,23 @@ class BotConfig:
     # Ultra-Scalp Strategy
     ULTRA_SCALP_RSI_PERIOD = 14
     ULTRA_SCALP_SMA_PERIOD = 20
-    ULTRA_SCALP_RSI_BUY_THRESHOLD = 30
-    ULTRA_SCALP_RSI_SELL_THRESHOLD = 70
     ULTRA_SCALP_RSI_SLOPE_THRESHOLD = 0.5  # FIXED: Added missing parameter
     ULTRA_SCALP_PRICE_CHANGE_THRESHOLD = 0.5
-    ULTRA_SCALP_BASE_CONFIDENCE = 0.6
     ULTRA_SCALP_RSI_DISTANCE_DIVISOR = 10
     ULTRA_SCALP_MOMENTUM_BONUS_MAX = 0.2
     ULTRA_SCALP_VOLUME_BONUS = 0.1
     ULTRA_SCALP_STOP_LOSS_PERCENT = 0.25
     ULTRA_SCALP_TAKE_PROFIT_PERCENT = 0.60
-    ULTRA_SCALP_MAX_HOLD_SECONDS = 600
+    ULTRA_SCALP_RSI_BUY_THRESHOLD = 25  # Changed from 30
+    ULTRA_SCALP_RSI_SELL_THRESHOLD = 75  # Changed from 70
+    ULTRA_SCALP_MIN_CANDLE_BODY_RATIO = 0.7  # New parameter
+    ULTRA_SCALP_MAX_HOLD_SECONDS = 300  # Reduced from 600 (5 minutes)
 
-   
+    
     # Fast-Scalp Strategy
+    FAST_SCALP_RSI_OVERSOLD = 40  # Changed from 45
+    FAST_SCALP_RSI_OVERBOUGHT = 60  # Changed from 55
+    FAST_SCALP_VWAP_CONFIRMATION = True  # New parameter
     FAST_SCALP_RSI_PERIOD = 14
     FAST_SCALP_EMA_FAST = 5
     FAST_SCALP_EMA_SLOW = 13
@@ -99,20 +102,19 @@ class BotConfig:
     FAST_SCALP_RSI_DISTANCE_DIVISOR = 10     # RSI distance divisor
     FAST_SCALP_MACD_BONUS_MAX = 0.3          # MACD bonus maximum
     FAST_SCALP_VOLUME_BONUS = 0.1            # Volume bonus
-    FAST_SCALP_BASE_CONFIDENCE = 0.4
     FAST_SCALP_VOLUME_CONFIDENCE_BONUS = 0.2
     FAST_SCALP_MIN_CONFIDENCE = 0.2
     FAST_SCALP_PROFIT_TARGET = 0.0060
     FAST_SCALP_STOP_LOSS = 0.0025
     FAST_SCALP_STOP_LOSS_PERCENT = 0.25      # 0.25% stop loss percentage
     FAST_SCALP_TAKE_PROFIT_PERCENT = 0.60    # 0.60% take profit percentage
-    FAST_SCALP_MAX_HOLD_SECONDS = 900        # 15 minutes
-    FAST_SCALP_RSI_OVERSOLD = 45             # FIXED: Added missing parameter
-    FAST_SCALP_RSI_OVERBOUGHT = 55           # FIXED: Added missing parameter
     FAST_SCALP_PRICE_CHANGE_THRESHOLD = 0.5  # FIXED: Added missing parameter
     
     # Quick-Momentum Strategy (Golden Cross Pattern Detection)
-    # GCP Pattern Detection Parameters
+    QUICK_MOMENTUM_MIN_PATTERN_CONFIDENCE = 0.6  # Increased from 0.25
+    QUICK_MOMENTUM_STRONG_PATTERN_CONFIDENCE = 0.75  # Increased from 0.5
+    QUICK_MOMENTUM_VOLUME_REQUIREMENT = 1.5  # New parameter
+    QUICK_MOMENTUM_MIN_PATTERN_DURATION = 30  # New parameter    
     QUICK_MOMENTUM_GROWTH_DETECTION_WINDOW = 20      # Window size for growth phase detection
     QUICK_MOMENTUM_PLATEAU_DETECTION_WINDOW = 15     # Window size for plateau phase detection
     QUICK_MOMENTUM_MIN_GROWTH_PERCENTAGE = 0.12      # Minimum growth/decline percentage (12%)
@@ -134,7 +136,6 @@ class BotConfig:
     QUICK_MOMENTUM_MIN_CONFIDENCE = 0.2                 # Overall strategy confidence threshold
     QUICK_MOMENTUM_STOP_LOSS = 0.004                    # 0.4% stop loss
     QUICK_MOMENTUM_PROFIT_TARGET = 0.008                # 0.8% take profit
-    QUICK_MOMENTUM_MAX_HOLD_SECONDS = 1200              # 20 minutes max hold
     
     # TTM-Squeeze Strategy
     TTM_SQUEEZE_RSI_PERIOD = 14
@@ -145,8 +146,6 @@ class BotConfig:
     TTM_SQUEEZE_RSI_BUY_THRESHOLD = 45  # RSI oversold threshold (more permissive)
     TTM_SQUEEZE_RSI_SELL_THRESHOLD = 55  # RSI overbought threshold (more permissive)
     TTM_SQUEEZE_MIN_CONFIDENCE = 0.15  # Much lower confidence threshold
-    TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # 30 minutes
-    TTM_SQUEEZE_BASE_CONFIDENCE = 0.6   # Base confidence for TTM-Squeeze
     TTM_SQUEEZE_SQUEEZE_BONUS = 0.2     # Bonus for squeeze detection
     TTM_SQUEEZE_MOMENTUM_BONUS = 0.1    # Bonus for momentum confirmation
     TTM_MAX_HOLD_SECONDS = 1800          # FIXED: Added missing parameter (alias for TTM_SQUEEZE_MAX_HOLD_SECONDS)
@@ -159,10 +158,11 @@ class BotConfig:
     TTM_DONCHIAN_PERIOD = 20   # Donchian midline period
     TTM_CVD_PERIOD = 10        # CVD lookback period
     TTM_MOMENTUM_THRESHOLD = 0.05  # Lower for 1m
-    TTM_SQUEEZE_PERSISTENCE = 2  # Consecutive periods
     TTM_STOP_LOSS_PERCENT = 0.0015  # 0.15%
     TTM_TAKE_PROFIT_PERCENT = 0.002  # 0.20%
-
+    TTM_SQUEEZE_PERSISTENCE = 1  # Reduced from 2
+    TTM_ADX_THRESHOLD = 25  # New parameter for trend confirmation
+    TTM_BB_WIDTH_PERCENTILE = 30  # New parameter (only trade when BB width < 30th percentile)
     
     # ==================== VOLUME ANALYSIS ====================
     
@@ -190,6 +190,10 @@ class BotConfig:
     RSI_DISTANCE_BONUS = 0.3  # FIXED: Higher (was 0.1)
     MOMENTUM_BONUS = 0.3      # FIXED: Higher (was 0.1)
     VOLUME_BONUS = 0.1        # FIXED: Higher (was 0.05)
+    # Confidence Adjustments
+    ULTRA_SCALP_BASE_CONFIDENCE = 0.5  # Increased from 0.4
+    FAST_SCALP_BASE_CONFIDENCE = 0.55  # Increased from 0.4
+    TTM_SQUEEZE_BASE_CONFIDENCE = 0.6  # Increased from 0.4
     
     # ==================== TELEGRAM NOTIFICATIONS ====================
     
@@ -242,7 +246,22 @@ class BotConfig:
     # Risk management settings
     MAX_DAILY_LOSS_PERCENT = 5.0
     MAX_TOTAL_RISK_PERCENT = 10.0
-    
+
+    # New Technical Indicator Parameters
+    ADX_PERIOD = 14  # For TTM-Squeeze trend confirmation
+    VWAP_PERIOD = 20  # For Fast-Scalp confirmation
+    BB_WIDTH_LOOKBACK = 100  # For TTM-Squeeze percentile calculation
+
+    # Timeframe Adjustments
+    QUICK_MOMENTUM_MAX_HOLD_SECONDS = 5400  # 90 minutes
+    FAST_SCALP_MAX_HOLD_SECONDS = 900  # 15 minutes
+    TTM_SQUEEZE_MAX_HOLD_SECONDS = 1800  # 30 minutes
+
+    # New Risk Parameters
+    ULTRA_SCALP_POSITION_SIZE_PERCENT = 15  # Smaller size for higher frequency
+    FAST_SCALP_POSITION_SIZE_PERCENT = 20
+    TTM_SQUEEZE_POSITION_SIZE_PERCENT = 25
+    QUICK_MOMENTUM_POSITION_SIZE_PERCENT = 30  # Larger size for higher confidence
     # ==================== DEBUG SETTINGS ====================
     
     # Debug and testing settings
