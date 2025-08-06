@@ -65,7 +65,16 @@ class TTMSqueezeStrategy:
             kc_upper, kc_middle, kc_lower = self._calculate_keltner_channels(high, low, close)
             donchian_midline = self._calculate_donchian_midline(high, low)
             cvd = self._calculate_cvd(volume, close)
-            
+            # Add ADX calculation
+            adx = self._calculate_adx(high, low, close, 14)
+            current_adx = adx.iloc[-1]
+
+            # Modify entry condition
+            if (squeeze_on and 
+                momentum_normalized > self.config["momentum_threshold"] and
+                current_adx > 25):
+                # Proceed with entry
+                    
             # Current values
             current_price = float(close.iloc[-1])
             current_bb_upper = float(bb_upper.iloc[-1]) if not pd.isna(bb_upper.iloc[-1]) else current_price * 1.02
