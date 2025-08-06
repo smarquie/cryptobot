@@ -153,15 +153,16 @@ class BotConfig:
 
     # TTM Squeeze Parameters (1-minute optimized)
     TTM_BB_PERIOD = 20          # Bollinger Bands period
-    TTM_BB_STD_DEV = 1.8       # Lower for 1m crypto
+    TTM_BB_STD_DEV = 1.5       # Lower for 1m crypto
     TTM_KC_PERIOD = 20         # Keltner period
-    TTM_KC_ATR_MULTIPLIER = 1.2 # Tighter for 1m
+    TTM_KC_ATR_MULTIPLIER = 1.0 # Tighter for 1m
     TTM_DONCHIAN_PERIOD = 20   # Donchian midline period
     TTM_CVD_PERIOD = 10        # CVD lookback period
-    TTM_MOMENTUM_THRESHOLD = 0.15  # Lower for 1m
-    TTM_SQUEEZE_PERSISTENCE = 3  # Consecutive periods
+    TTM_MOMENTUM_THRESHOLD = 0.05  # Lower for 1m
+    TTM_SQUEEZE_PERSISTENCE = 2  # Consecutive periods
     TTM_STOP_LOSS_PERCENT = 0.0015  # 0.15%
     TTM_TAKE_PROFIT_PERCENT = 0.002  # 0.20%
+
     
     # ==================== VOLUME ANALYSIS ====================
     
