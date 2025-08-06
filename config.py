@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-CONFIG.PY - COMPLETE VERSION FOR 4 STRATEGIES
+CONFIG.PY - COMPLETE VERSION FOR 4 STRATEGIES + EXCHANGE API
 Contains ALL parameters used by:
 - Ultra-Scalp
 - TTM-Squeeze 
 - Quick-Momentum
 - Fast-Scalp
+- Exchange API connections
 """
 
 class BotConfig:
@@ -19,6 +20,12 @@ class BotConfig:
     MIN_DATA_POINTS = 20
     MAX_DATA_AGE_SECONDS = 300
     MAX_POSITIONS_PER_SYMBOL = 4
+
+    # ========== EXCHANGE API CONFIGURATION ==========
+    EXCHANGE_NAME = "coinbase"
+    COINBASE_API_KEY = "adf66289-037e-4572-9d52-bc3b5510fe8c"
+    COINBASE_API_SECRET = "MHcCAQEEIKUvob/ojYZFRWGl67PUunqATRp6Wwi/1k21e26BywQpoAoGCCqGSM49AwEHoUQDQgAESNTa7Q5ztx/H3xUnHCRyZvudHgTd5KA0i/IHP5wPFPgUf0hYQUV3g+tSK6Z/GhdP7jxsGi92tjGjOcVv/0T+JA=="
+    PASSPHRASE = "YOUR_PASSPHRASE_HERE"
 
     # ========== RISK MANAGEMENT ==========
     POSITION_SIZE_PERCENT = 25.0
@@ -121,5 +128,13 @@ class BotConfig:
     FAST_SCALP_POSITION_SIZE_PERCENT = 20
     TTM_SQUEEZE_POSITION_SIZE_PERCENT = 25
     QUICK_MOMENTUM_POSITION_SIZE_PERCENT = 30
+
+    # ========== TELEGRAM NOTIFICATIONS ==========
+    TELEGRAM_ENABLED = True
+    TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+    TELEGRAM_CHAT_ID = "YOUR_CHAT_ID_HERE"
+    NOTIFY_ALL_SIGNALS = True
+    NOTIFY_TRADES = True
+    NOTIFY_ERRORS = True
 
 __all__ = ['BotConfig']
