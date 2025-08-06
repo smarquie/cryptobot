@@ -39,7 +39,7 @@ class TTMSqueezeStrategy:
             
             # Risk management
             "stop_loss_percent": BotConfig.TTM_STOP_LOSS_PERCENT,
-            "take_profit_percent": BotConfig.TTM_TAKE_PROFIT_PERCENT
+            "take_profit_percent": BotConfig.TTM_TAKE_PROFIT_PERCENT,
 
             "adx_threshold": BotConfig.TTM_ADX_THRESHOLD,
             "bb_width_percentile": BotConfig.TTM_BB_WIDTH_PERCENTILE,
