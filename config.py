@@ -150,6 +150,18 @@ class BotConfig:
     TTM_SQUEEZE_SQUEEZE_BONUS = 0.2     # Bonus for squeeze detection
     TTM_SQUEEZE_MOMENTUM_BONUS = 0.1    # Bonus for momentum confirmation
     TTM_MAX_HOLD_SECONDS = 1800          # FIXED: Added missing parameter (alias for TTM_SQUEEZE_MAX_HOLD_SECONDS)
+
+    # TTM Squeeze Parameters (1-minute optimized)
+    TTM_BB_PERIOD = 20          # Bollinger Bands period
+    TTM_BB_STD_DEV = 1.8       # Lower for 1m crypto
+    TTM_KC_PERIOD = 20         # Keltner period
+    TTM_KC_ATR_MULTIPLIER = 1.2 # Tighter for 1m
+    TTM_DONCHIAN_PERIOD = 20   # Donchian midline period
+    TTM_CVD_PERIOD = 10        # CVD lookback period
+    TTM_MOMENTUM_THRESHOLD = 0.15  # Lower for 1m
+    TTM_SQUEEZE_PERSISTENCE = 3  # Consecutive periods
+    TTM_STOP_LOSS_PERCENT = 0.0015  # 0.15%
+    TTM_TAKE_PROFIT_PERCENT = 0.002  # 0.20%
     
     # ==================== VOLUME ANALYSIS ====================
     
