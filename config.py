@@ -85,8 +85,8 @@ class BotConfig:
    
     # Fast-Scalp Strategy
     FAST_SCALP_RSI_PERIOD = 14
-    FAST_SCALP_EMA_FAST = 8
-    FAST_SCALP_EMA_SLOW = 21
+    FAST_SCALP_EMA_FAST = 5
+    FAST_SCALP_EMA_SLOW = 13
     FAST_SCALP_RSI_BUY_THRESHOLD = 45        # RSI oversold threshold (more permissive)
     FAST_SCALP_RSI_SELL_THRESHOLD = 55       # RSI overbought threshold (more permissive)
     FAST_SCALP_MACD_FAST = 5
