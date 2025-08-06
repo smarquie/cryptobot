@@ -133,7 +133,7 @@ class TTMSqueezeStrategy:
             # COMPLETE BOT ENTRY LOGIC 
             if (self._check_squeeze_persistence(symbol, self.config["squeeze_persistence"]) and
                 abs(momentum_normalized) > self.config["momentum_threshold"] and
-                current_adx > BotConfig.TTM_ADX_THRESHOLD) and  # New ADX filter
+                current_adx > BotConfig.TTM_ADX_THRESHOLD and  # New ADX filter
                 bb_width_percentile < BotConfig.TTM_BB_WIDTH_PERCENTILE):  # New BB width filter
 
                 # Determine direction based on momentum
