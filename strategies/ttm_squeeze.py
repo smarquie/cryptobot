@@ -71,12 +71,6 @@ class TTMSqueezeStrategy:
             # Add ADX calculation
             adx = self._calculate_adx(high, low, close, 14)
             current_adx = adx.iloc[-1]
-
-            # Modify entry condition
-            if (squeeze_on and 
-                momentum_normalized > self.config["momentum_threshold"] and
-                current_adx > 25):
-                # Proceed with entry
                     
             # Current values
             current_price = float(close.iloc[-1])
