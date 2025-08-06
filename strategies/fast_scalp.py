@@ -52,13 +52,6 @@ class FastScalpStrategy:
             ema_fast = close.ewm(span=BotConfig.FAST_SCALP_EMA_FAST, adjust=False).mean()
             ema_slow = close.ewm(span=BotConfig.FAST_SCALP_EMA_SLOW, adjust=False).mean()
             
-            # New entry condition
-            if (current_rsi < 40 and 
-                ema_fast.iloc[-1] > ema_slow.iloc[-1] and 
-                current_price > vwap.iloc[-1]):
-                action = 'buy'
-
-            
             if len(rsi_series) >= 2:  # Need at least 2 periods for momentum
                 # Get current and previous RSI values
                 current_rsi_val = rsi_series.iloc[-1]
