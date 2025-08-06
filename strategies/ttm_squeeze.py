@@ -40,6 +40,9 @@ class TTMSqueezeStrategy:
             # Risk management
             "stop_loss_percent": BotConfig.TTM_STOP_LOSS_PERCENT,
             "take_profit_percent": BotConfig.TTM_TAKE_PROFIT_PERCENT
+
+            "adx_threshold": BotConfig.TTM_ADX_THRESHOLD,
+            "bb_width_percentile": BotConfig.TTM_BB_WIDTH_PERCENTILE,
         }
     
     def analyze_and_signal(self, df: pd.DataFrame, symbol: str) -> Dict:
@@ -84,7 +87,15 @@ class TTMSqueezeStrategy:
             current_donchian = float(donchian_midline.iloc[-1]) if not pd.isna(donchian_midline.iloc[-1]) else current_price
             current_sma = float(bb_middle.iloc[-1]) if not pd.isna(bb_middle.iloc[-1]) else current_price
             current_cvd = float(cvd.iloc[-1]) if not pd.isna(cvd.iloc[-1]) else 0
-            
+
+            # Current values - add ADX after other indicators
+            adx = self._calculate_adx(high, low, close, 14)
+            current_adx = float(adx.iloc[-1]) if not pd.isna(adx.iloc[-1]) else 25
+
+            # Add this after calculating Bollinger Bands
+            bb_width = (bb_upper - bb_lower) / bb_middle
+            bb_width_percentile = bb_width.rank(pct=True).iloc[-1] * 100
+
             # Check squeeze condition (EXACT same logic as complete bot)
             squeeze_on = (current_bb_upper < current_kc_upper and current_bb_lower > current_kc_lower)
             
@@ -119,17 +130,20 @@ class TTMSqueezeStrategy:
             action = 'hold'
             reason = 'No TTM signal'
             
-            # COMPLETE BOT ENTRY LOGIC (totally different from original RSI-based logic)
+            # COMPLETE BOT ENTRY LOGIC 
             if (self._check_squeeze_persistence(symbol, self.config["squeeze_persistence"]) and
-                abs(momentum_normalized) > self.config["momentum_threshold"]):
-                
-                # Determine direction based on momentum (COMPLETE BOT METHOD)
+                abs(momentum_normalized) > self.config["momentum_threshold"] and
+                current_adx > BotConfig.TTM_ADX_THRESHOLD) and  # New ADX filter
+                bb_width_percentile < BotConfig.TTM_BB_WIDTH_PERCENTILE):  # New BB width filter
+
+                # Determine direction based on momentum
                 if momentum_normalized > 0:
                     action = 'buy'
-                    reason = f'TTM BUY: Squeeze history, momentum={momentum_normalized:.3f}'
+                    reason = f'TTM BUY: Squeeze + ADX={current_adx:.1f} + momentum={momentum_normalized:.3f}'
                 elif momentum_normalized < 0:
                     action = 'sell'
-                    reason = f'TTM SELL: Squeeze history, momentum={momentum_normalized:.3f}'
+                    reason = f'TTM SELL: Squeeze + ADX={current_adx:.1f} + momentum={momentum_normalized:.3f}'
+
                 
                 if action != 'hold':
                     # Calculate confidence (COMPLETE BOT METHOD)
@@ -176,6 +190,8 @@ class TTMSqueezeStrategy:
                 'bb_position': (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if (current_bb_upper - current_bb_lower) > 0 else 0.5,
                 'keltner_position': (current_price - current_kc_lower) / (current_kc_upper - current_kc_lower) if (current_kc_upper - current_kc_lower) > 0 else 0.5,
                 'volume_surge': False  # Original had this, keeping for compatibility
+                'adx': current_adx,
+                'bb_width_percentile': bb_width_percentile,
             }
 
         except Exception as e:
@@ -295,6 +311,31 @@ class TTMSqueezeStrategy:
             return cvd.fillna(0)
         except Exception as e:
             return pd.Series([0] * len(volume), index=volume.index)
+
+    def _calculate_adx(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int) -> pd.Series:
+        """Calculate ADX for trend strength confirmation"""
+        try:
+            # Calculate +DI and -DI
+            up = high.diff()
+            down = -low.diff()
+            plus_dm = up.where((up > down) & (up > 0), 0)
+            minus_dm = down.where((down > up) & (down > 0), 0)
+            
+            tr1 = high - low
+            tr2 = (high - close.shift()).abs()
+            tr3 = (low - close.shift()).abs()
+            true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            
+            atr = true_range.rolling(period).mean()
+            plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
+            minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
+            
+            dx = 100 * ((plus_di - minus_di).abs() / (plus_di + minus_di))
+            adx = dx.rolling(period).mean()
+            
+            return adx.fillna(25)  # Default to neutral value if not enough data
+        except Exception as e:
+            return pd.Series([25] * len(high), index=high.index
 
 # Export the strategy class (same as original)
 __all__ = ['TTMSqueezeStrategy']
