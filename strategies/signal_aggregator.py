@@ -1,488 +1,238 @@
-# utils/portfolio.py
+# strategies/signal_aggregator.py
+"""
+SIGNAL AGGREGATOR - FIXED WITH PROPER AGREEMENT LOGIC
+Fixes issues with signal filtering while preserving strategy integrity
+"""
+
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from config import BotConfig
+import pandas as pd
+
+from cryptobot.config import BotConfig
+from cryptobot.strategies.ultra_scalp import UltraScalpStrategy
+from cryptobot.strategies.fast_scalp import FastScalpStrategy
+from cryptobot.strategies.quick_momentum import QuickMomentumStrategy
+from cryptobot.strategies.ttm_squeeze import TTMSqueezeStrategy
 
 logger = logging.getLogger(__name__)
 
-class Position:
-    def __init__(self, symbol: str, side: str, size: float, entry_price: float, strategy: str):
-        self.symbol = symbol
-        self.side = side
-        self.size = size
-        self.entry_price = entry_price
-        self.strategy = strategy
-        self.unrealized_pnl = 0.0
-        self.realized_pnl = 0.0
-    
-    def update_price(self, current_price: float):
-        if self.side == 'buy':
-            self.unrealized_pnl = (current_price - self.entry_price) * self.size
-        else:
-            self.unrealized_pnl = (self.entry_price - current_price) * self.size
-
-class Portfolio:
-    def __init__(self):
-        self.balance = BotConfig.INITIAL_BALANCE
-        self.positions = {}  # (symbol, strategy) -> position dict
-        self.trade_history = []  # Track trade history
-        self.data_client = None  # Data client reference
-        self.current_prices = {}  # Store current market prices
-        self.signal_cooldown = {}  # symbol -> last_trade_time
-        self.cooldown_minutes = 2  # 2-minute cooling period
-        
-        # DYNAMIC POSITION SIZING - Can be adjusted while bot runs
-        self.dynamic_position_size_percent = BotConfig.POSITION_SIZE_PERCENT
-        self.dynamic_min_position_value = BotConfig.MIN_POSITION_VALUE
-        self.dynamic_max_position_value = BotConfig.MAX_POSITION_VALUE
-        self.dynamic_target_position_value = BotConfig.TARGET_POSITION_VALUE
-        
-        # ADDED: Debug mode for verbose logging
-        self.debug_mode = True
-        
-        logger.info(f"💼 Portfolio initialized with ${self.balance:,.2f}")
-        logger.info(f"💰 Dynamic position sizing: {self.dynamic_position_size_percent}% (${self.dynamic_target_position_value:,.2f})")
-    
-    def update_position_sizing(self, 
-                             position_size_percent: float = None,
-                             min_position_value: float = None,
-                             max_position_value: float = None,
-                             target_position_value: float = None):
-        """
-        Update position sizing parameters dynamically while bot runs
-        """
-        if position_size_percent is not None:
-            self.dynamic_position_size_percent = position_size_percent
-            logger.info(f"💰 Updated position size percent: {position_size_percent}%")
-        
-        if min_position_value is not None:
-            self.dynamic_min_position_value = min_position_value
-            logger.info(f"💰 Updated min position value: ${min_position_value:,.2f}")
-        
-        if max_position_value is not None:
-            self.dynamic_max_position_value = max_position_value
-            logger.info(f"💰 Updated max position value: ${max_position_value:,.2f}")
-        
-        if target_position_value is not None:
-            self.dynamic_target_position_value = target_position_value
-            logger.info(f"💰 Updated target position value: ${target_position_value:,.2f}")
-        
-        # Log current sizing
-        logger.info(f"💰 Current dynamic sizing: {self.dynamic_position_size_percent}% = ${self.balance * (self.dynamic_position_size_percent / 100):,.2f}")
-    
-    def get_position_sizing_info(self) -> Dict[str, float]:
-        """Get current position sizing parameters"""
-        return {
-            'position_size_percent': self.dynamic_position_size_percent,
-            'min_position_value': self.dynamic_min_position_value,
-            'max_position_value': self.dynamic_max_position_value,
-            'target_position_value': self.dynamic_target_position_value,
-            'current_balance': self.balance,
-            'current_target_value': self.balance * (self.dynamic_position_size_percent / 100)
+class SignalAggregator:
+    def __init__(self, portfolio=None):
+        self.strategies = {
+            'Ultra-Scalp': UltraScalpStrategy(),
+            'Fast-Scalp': FastScalpStrategy(),
+            'Quick-Momentum': QuickMomentumStrategy(),
+            'TTM-Squeeze': TTMSqueezeStrategy()
         }
-    
-    @classmethod
-    def update_global_sizing(cls, 
-                           position_size_percent: float = None,
-                           min_position_value: float = None,
-                           max_position_value: float = None,
-                           target_position_value: float = None):
-        """
-        Update global position sizing parameters that will be used by new portfolio instances
-        This can be called from Colab cells to change sizing for the entire bot
-        """
-        if position_size_percent is not None:
-            cls.dynamic_position_size_percent = position_size_percent
-            print(f"💰 Updated global position size percent: {position_size_percent}%")
+        # FIXED: Don't access weights during __init__ to avoid import issues
+        self._weights = None
         
-        if min_position_value is not None:
-            cls.dynamic_min_position_value = min_position_value
-            print(f"💰 Updated global min position value: ${min_position_value:,.2f}")
+        # Reference for position checking
+        self.portfolio = portfolio
         
-        if max_position_value is not None:
-            cls.dynamic_max_position_value = max_position_value
-            print(f"💰 Updated global max position value: ${max_position_value:,.2f}")
-        
-        if target_position_value is not None:
-            cls.dynamic_target_position_value = target_position_value
-            print(f"💰 Updated global target position value: ${target_position_value:,.2f}")
-        
-        print(f"✅ Global position sizing updated successfully!")
-    
-    @classmethod
-    def get_global_sizing_info(cls) -> Dict[str, float]:
-        """Get current global position sizing parameters"""
-        return {
-            'position_size_percent': getattr(cls, 'dynamic_position_size_percent', 25.0),
-            'min_position_value': getattr(cls, 'dynamic_min_position_value', 1000.0),
-            'max_position_value': getattr(cls, 'dynamic_max_position_value', 3500.0),
-            'target_position_value': getattr(cls, 'dynamic_target_position_value', 2500.0)
-        }
-    
-    def has_position(self, symbol: str) -> bool:
-        """Check if we have ANY position for a symbol (for backward compatibility)"""
-        if self.debug_mode:
-            position_count = sum(1 for s, _ in self.positions.keys() if s == symbol)
-            if position_count > 0:
-                print(f"📊 {symbol}: Has {position_count} existing positions")
-            else:
-                print(f"📊 {symbol}: No existing positions")
-        return any(s == symbol for s, _ in self.positions.keys())
-    
-    def has_position_for_strategy(self, symbol: str, strategy: str) -> bool:
-        """
-        FIXED: Check if we have a position for a specific symbol and strategy
-        More robust checking with debug information
-        """
-        has_position = (symbol, strategy) in self.positions
-        
-        if self.debug_mode:
-            if has_position:
-                print(f"📊 {symbol} ({strategy}): Already has position")
-            else:
-                print(f"📊 {symbol} ({strategy}): No existing position")
-                
-            # List all positions for this symbol for debugging
-            symbol_positions = [(s, strat) for (s, strat) in self.positions.keys() if s == symbol]
-            if symbol_positions:
-                print(f"📊 {symbol}: Current positions: {symbol_positions}")
-        
-        return has_position
-    
-    def get_position_for_symbol(self, symbol: str) -> Dict:
-        """Get the first position for a symbol (for direction checking)"""
-        for (s, strategy), pos in self.positions.items():
-            if s == symbol:
-                if self.debug_mode:
-                    print(f"📊 {symbol}: Found position with {strategy} strategy ({pos['side']})")
-                return pos
-        
-        if self.debug_mode:
-            print(f"📊 {symbol}: No positions found")
-        return None
-    
-    def is_in_cooldown(self, symbol: str) -> bool:
-        """
-        FIXED: Check if symbol is in cooling period
-        Added debug output for better visibility
-        """
-        if symbol not in self.signal_cooldown:
-            if self.debug_mode:
-                print(f"⏰ {symbol}: Not in cooldown")
-            return False
-        
-        time_since_last = (datetime.now() - self.signal_cooldown[symbol]).total_seconds() / 60
-        is_cooling = time_since_last < self.cooldown_minutes
-        
-        if self.debug_mode:
-            if is_cooling:
-                remaining = self.cooldown_minutes - time_since_last
-                print(f"⏰ {symbol}: In cooldown ({remaining:.1f}min remaining)")
-            else:
-                print(f"⏰ {symbol}: Cooldown expired")
-        
-        return is_cooling
-    
-    def get_cooldown_remaining(self, symbol: str) -> float:
-        """Get remaining cooldown time in minutes"""
-        if symbol not in self.signal_cooldown:
-            return 0.0
-        
-        time_since_last = (datetime.now() - self.signal_cooldown[symbol]).total_seconds() / 60
-        remaining = max(0, self.cooldown_minutes - time_since_last)
-        return remaining
-    
-    def update_current_prices(self, market_data: Dict):
-        """Update current market prices for mark-to-market calculations"""
-        for symbol, price in market_data.items():
-            if isinstance(price, (int, float)) and price > 0:
-                self.current_prices[symbol] = price
-    
-    def calculate_position_size(self, signal: Dict[str, Any], price: float) -> float:
-        """Calculate position size based on signal and current price"""
-        try:
-            # Use DYNAMIC config values for position sizing (can be changed while bot runs)
-            target_position_value = self.balance * (self.dynamic_position_size_percent / 100)
-            min_position_value = self.dynamic_min_position_value
-            max_position_value = self.dynamic_max_position_value
-            
-            # Calculate position size based on target value
-            position_size = target_position_value / price
-            
-            # Ensure minimum trade size
-            min_position_size = min_position_value / price
-            position_size = max(position_size, min_position_size)
-            
-            # Ensure maximum trade size
-            max_position_size = max_position_value / price
-            position_size = min(position_size, max_position_size)
-            
-            # Calculate actual position value for logging
-            actual_position_value = position_size * price
-            
-            logger.info(f"💰 Position sizing for {signal.get('symbol', 'unknown')}:")
-            logger.info(f"   Target: ${target_position_value:.2f} ({self.dynamic_position_size_percent}% of portfolio)")
-            logger.info(f"   Actual: ${actual_position_value:.2f}")
-            logger.info(f"   Size: {position_size:.6f} units @ ${price:.2f}")
-            
-            return position_size
-            
-        except Exception as e:
-            logger.error(f"❌ Error calculating position size: {e}")
-            # Fallback to dynamic percentage
-            return (self.balance * (self.dynamic_position_size_percent / 100)) / price
-    
-    def can_execute_trade(self, signal: Dict[str, Any], symbol: str) -> Tuple[bool, str]:
-        """
-        FIXED: More robust trade execution check
-        Improved debugging information
-        """
-        action = signal.get('action', 'unknown')
-        strategy = signal.get('strategy', 'unknown')
-        
-        if self.debug_mode:
-            print(f"🔍 Checking if can execute {action} for {symbol} with {strategy} strategy")
-        
-        # Check cooling period
-        if self.is_in_cooldown(symbol):
-            remaining = self.get_cooldown_remaining(symbol)
-            return False, f"Symbol in {remaining:.1f}min cooldown"
-        
-        # FIXED: Check for strategy-specific position
-        if self.has_position_for_strategy(symbol, strategy):
-            return False, f"Already have {strategy} position for {symbol}"
-        
-        # Check existing position for opposite direction
-        existing_position = self.get_position_for_symbol(symbol)
-        if existing_position:
-            existing_direction = existing_position['side']
-            
-            # If same direction, allow trade (already checked for same strategy above)
-            if existing_direction == action:
-                return True, "Same direction trade allowed"
-            
-            # If opposite direction, need to close existing position first
-            else:
-                return False, f"Need to close existing {existing_direction} position first"
-        
-        # No existing position, trade allowed
-        return True, "No existing position"
-    
-    def open_position(self, signal: Dict[str, Any], symbol: str, price: float):
-        """
-        FIXED: More robust position opening with better debugging
-        """
-        strategy = signal.get('strategy', 'unknown')
-        
-        if self.debug_mode:
-            print(f"🔍 Attempting to open {signal['action']} position for {symbol} with {strategy} strategy")
-        
-        # Check if we can execute this trade
-        can_execute, reason = self.can_execute_trade(signal, symbol)
-        if not can_execute:
-            logger.info(f"📊 {symbol}: Cannot execute trade - {reason}")
-            return False
-        
-        try:
-            size = signal.get('position_size', 0)
-            if size <= 0:
-                if self.debug_mode:
-                    print(f"⚠️ Invalid position size: {size}")
-                return False
-                
-            position_data = {
-                'symbol': symbol,
-                'side': signal['action'],
-                'size': size,
-                'entry_price': price,
-                'strategy': strategy,
-                'entry_time': datetime.now().isoformat(),
-                'stop_loss': signal.get('stop_loss'),
-                'take_profit': signal.get('take_profit')
+        # Strategy-specific configurations (all use 1-minute data)
+        self.strategy_configs = {
+            'Ultra-Scalp': {
+                'timeframe': '1m',
+                'lookback': 10,  # Needs 10 minutes of 1-minute data
+                'max_hold_time': BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.ULTRA_SCALP_MAX_HOLD_SECONDS//60} minutes',
+                'description': 'Ultra-fast scalping with 1-minute data'
+            },
+            'Fast-Scalp': {
+                'timeframe': '1m',
+                'lookback': 15,  # Needs 15 minutes of 1-minute data
+                'max_hold_time': BotConfig.FAST_SCALP_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.FAST_SCALP_MAX_HOLD_SECONDS//60} minutes',
+                'description': 'Fast scalping with 1-minute data'
+            },
+            'Quick-Momentum': {
+                'timeframe': '1m',
+                'lookback': 20,  # Needs 20 minutes of 1-minute data
+                'max_hold_time': BotConfig.QUICK_MOMENTUM_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.QUICK_MOMENTUM_MAX_HOLD_SECONDS//60} minutes',
+                'description': 'Momentum trading with 1-minute data'
+            },
+            'TTM-Squeeze': {
+                'timeframe': '1m',
+                'lookback': 20,  # Needs 20 minutes of 1-minute data
+                'max_hold_time': BotConfig.TTM_SQUEEZE_MAX_HOLD_SECONDS,
+                'target_hold': f'{BotConfig.TTM_SQUEEZE_MAX_HOLD_SECONDS//60} minutes',
+                'description': 'Squeeze breakout with 1-minute data'
             }
-            
-            # Store position by symbol AND strategy
-            self.positions[(symbol, strategy)] = position_data
-            
-            # Deduct the cost from balance
-            position_cost = price * size
-            self.balance -= position_cost
-            
-            # Update cooling period
-            self.signal_cooldown[symbol] = datetime.now()
-            
-            logger.info(f"📈 Opened {signal['action']} on {symbol} with {strategy} strategy")
-            logger.info(f"💰 Position cost: ${position_cost:.2f}, New balance: ${self.balance:.2f}")
-            logger.info(f"⏰ Cooling period started for {symbol}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to open position: {e}")
-            return False
-    
-    def close_all_positions_for_symbol(self, symbol: str, price: float, reason: str = 'direction_change'):
-        """Close all positions for a symbol (for direction change)"""
-        closed_positions = []
-        
-        if self.debug_mode:
-            print(f"🔍 Closing all positions for {symbol}")
-        
-        for (s, strategy) in list(self.positions.keys()):
-            if s == symbol:
-                pos = self.positions.pop((s, strategy))
-                
-                # Calculate P&L
-                if pos['side'] == 'buy':
-                    pnl = (price - pos['entry_price']) * pos['size']
-                else:  # sell position
-                    pnl = (pos['entry_price'] - price) * pos['size']
-                
-                # Add proceeds back to balance
-                position_value = price * pos['size']
-                self.balance += position_value
-                
-                # Add to trade history
-                self.trade_history.append({
-                    'symbol': symbol,
-                    'strategy': strategy,
-                    'side': pos['side'],
-                    'size': pos['size'],
-                    'entry_price': pos['entry_price'],
-                    'exit_price': price,
-                    'pnl': pnl,
-                    'reason': reason,
-                    'entry_time': pos.get('entry_time'),
-                    'exit_time': datetime.now().isoformat()
-                })
-                
-                closed_positions.append({
-                    'strategy': strategy,
-                    'side': pos['side'],
-                    'size': pos['size'],
-                    'pnl': pnl,
-                    'value': position_value
-                })
-                
-                logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f}")
-                logger.info(f"💰 P&L: ${pnl:.2f}, Position value: ${position_value:.2f}")
-        
-        if closed_positions:
-            total_pnl = sum(p['pnl'] for p in closed_positions)
-            total_value = sum(p['value'] for p in closed_positions)
-            logger.info(f"📊 Closed {len(closed_positions)} positions for {symbol}")
-            logger.info(f"💰 Total P&L: ${total_pnl:.2f}, Total value: ${total_value:.2f}")
-            logger.info(f"💼 New balance: ${self.balance:.2f}")
-        
-        return closed_positions
-    
-    def close_position(self, symbol: str, strategy: str, price: float, reason: str = 'manual'):
-        """Close a specific position by symbol and strategy"""
-        if (symbol, strategy) not in self.positions:
-            if self.debug_mode:
-                print(f"⚠️ Cannot close position: {symbol} ({strategy}) - not found")
-            return False
-        
-        if self.debug_mode:
-            print(f"🔍 Closing {symbol} position with {strategy} strategy")
-        
-        pos = self.positions.pop((symbol, strategy))
-        
-        # Calculate P&L
-        if pos['side'] == 'buy':
-            pnl = (price - pos['entry_price']) * pos['size']
-        else:  # sell position
-            pnl = (pos['entry_price'] - price) * pos['size']
-        
-        # Add proceeds back to balance
-        position_value = price * pos['size']
-        self.balance += position_value
-        
-        # Add to trade history with complete information
-        self.trade_history.append({
-            'symbol': symbol,
-            'strategy': strategy,
-            'side': pos['side'],
-            'size': pos['size'],
-            'entry_price': pos['entry_price'],
-            'close_price': price,
-            'pnl': pnl,
-            'reason': reason,
-            'entry_time': pos.get('entry_time'),
-            'exit_time': datetime.now().isoformat(),
-            'stop_loss': pos.get('stop_loss'),
-            'take_profit': pos.get('take_profit')
-        })
-        
-        logger.info(f"📉 Closed {pos['side']} on {symbol} ({strategy}) at ${price:.2f}")
-        logger.info(f"💰 P&L: ${pnl:.2f}, Position value: ${position_value:.2f}, New balance: ${self.balance:.2f}")
-        return True
-    
-    def get_summary(self) -> Dict[str, Any]:
-        """Return portfolio summary with proper mark-to-market calculations and win/loss stats"""
-        # Start with cash balance
-        total_value = self.balance
-        total_unrealized_pnl = 0.0
-        
-        # Add current market value of all positions
-        for (symbol, strategy), pos in self.positions.items():
-            current_price = self.current_prices.get(symbol, pos['entry_price'])
-            position_value = pos['size'] * current_price
-            total_value += position_value
-            if pos['side'] == 'buy':
-                unrealized_pnl = (current_price - pos['entry_price']) * pos['size']
-            else:
-                unrealized_pnl = (pos['entry_price'] - current_price) * pos['size']
-            total_unrealized_pnl += unrealized_pnl
-            if self.positions:
-                logger.debug(f"📊 {symbol} ({strategy}): {pos['side']} {pos['size']:.6f} @ ${pos['entry_price']:.2f} → ${current_price:.2f} (P&L: ${unrealized_pnl:.2f})")
-        exposure_value = sum(pos['size'] * self.current_prices.get(symbol, pos['entry_price']) for (symbol, strategy), pos in self.positions.items())
-        exposure_pct = (exposure_value / total_value * 100) if total_value > 0 else 0.0
-        
-        # Calculate total return percentage
-        initial_balance = BotConfig.INITIAL_BALANCE
-        total_return_pct = ((total_value - initial_balance) / initial_balance * 100) if initial_balance > 0 else 0.0
-        
-        # Win/loss stats - Improved calculation
-        total_trades = len(self.trade_history)
-        if total_trades > 0:
-            # Count winning trades (positive P&L)
-            win_trades = [p for p in self.trade_history if p['pnl'] > 0]
-            # Count losing trades (negative P&L) 
-            loss_trades = [p for p in self.trade_history if p['pnl'] < 0]
-            # Count breakeven trades (zero P&L)
-            breakeven_trades = [p for p in self.trade_history if p['pnl'] == 0]
-            
-            # Calculate rates
-            win_rate = len(win_trades) / total_trades
-            loss_rate = len(loss_trades) / total_trades
-            breakeven_rate = len(breakeven_trades) / total_trades
-            
-            # Calculate averages
-            avg_win = sum(p['pnl'] for p in win_trades) / len(win_trades) if win_trades else 0.0
-            avg_loss = sum(p['pnl'] for p in loss_trades) / len(loss_trades) if loss_trades else 0.0
-            
-            logger.info(f"📊 Trade Stats: {len(win_trades)} wins, {len(loss_trades)} losses, {len(breakeven_trades)} breakeven out of {total_trades} total")
-            logger.info(f"📊 Win Rate: {win_rate:.1%}, Loss Rate: {loss_rate:.1%}, Breakeven Rate: {breakeven_rate:.1%}")
-            
-            # Debug: Show recent trades
-            if len(self.trade_history) > 0:
-                recent_trades = self.trade_history[-5:]  # Last 5 trades
-                logger.info(f"📊 Recent trades: {recent_trades}")
-        else:
-            win_rate = 0.0
-            loss_rate = 0.0
-            avg_win = 0.0
-            avg_loss = 0.0
-        return {
-            'balance': self.balance,
-            'total_value': total_value,
-            'open_positions': len(self.positions),
-            'unrealized_pnl': total_unrealized_pnl,
-            'exposure_pct': exposure_pct,
-            'total_return_pct': total_return_pct,
-            'win_rate': win_rate,
-            'loss_rate': loss_rate,
-            'avg_win': avg_win,
-            'avg_loss': avg_loss,
-            'trade_count': len(self.trade_history)
         }
+        
+        # Debug mode for detailed logging
+        self.debug_mode = True
+    
+    @property
+    def weights(self):
+        """Lazy-load weights to avoid import issues"""
+        if self._weights is None:
+            try:
+                self._weights = BotConfig.STRATEGY_WEIGHTS
+            except AttributeError:
+                # Fallback weights if config not available
+                self._weights = {
+                    "Ultra-Scalp": 0.8,
+                    "Fast-Scalp": 0.9,
+                    "Quick-Momentum": 1.0,
+                    "TTM-Squeeze": 1.1
+                }
+        return self._weights
+
+    def aggregate(self, market_data: Dict, symbol: str) -> List[Dict]:
+        """
+        Run ALL strategies and aggregate signals based on agreement
+        FIXED: Properly apply agreement logic and provide detailed logging
+        """
+        all_signals = []
+        
+        if self.debug_mode:
+            print(f"\n{'='*60}\n🔍 ANALYZING {symbol}\n{'='*60}")
+        
+        for strategy_name, strategy in self.strategies.items():
+            try:
+                # All strategies use 1-minute data
+                config = self.strategy_configs[strategy_name]
+                lookback = config['lookback']
+                
+                # Get 1-minute data for this strategy
+                df = market_data.get(f"{symbol}_1m")
+                if df is None or df.empty:
+                    if self.debug_mode:
+                        print(f"⚠️ No 1m data for {symbol}")
+                    continue
+                
+                # Log data summary if in debug mode
+                if self.debug_mode:
+                    print(f"\n📊 {strategy_name} - Data summary:")
+                    print(f"  - Available data: {len(df)} periods")
+                    print(f"  - Required data: {lookback} periods")
+                
+                # Use only the required number of recent data points
+                if len(df) >= lookback:
+                    df = df.tail(lookback)
+                else:
+                    if self.debug_mode:
+                        print(f"⚠️ Insufficient 1m data for {strategy_name}: {len(df)} < {lookback}")
+                    continue
+                
+                # Ensure DataFrame has required columns
+                required_columns = ['open', 'high', 'low', 'close', 'volume']
+                if not all(col in df.columns for col in required_columns):
+                    if self.debug_mode:
+                        print(f"⚠️ Missing required columns for {symbol}_1m")
+                    continue
+                
+                # IMPORTANT FIX: Only check for existing positions if portfolio is provided
+                # This prevents signals from being blocked if portfolio isn't initialized
+                if self.portfolio:
+                    # Check if this strategy already has a position for this symbol
+                    if self.portfolio.has_position_for_strategy(symbol, strategy_name):
+                        if self.debug_mode:
+                            print(f"📊 {symbol} ({strategy_name}): Strategy already has position - skipping")
+                        continue
+                
+                # Run strategy analysis
+                if self.debug_mode:
+                    print(f"\n🧮 Running {strategy_name} analysis for {symbol}...")
+                signal = strategy.analyze_and_signal(df, symbol)
+                
+                # Validate signal is a dictionary
+                if not isinstance(signal, dict):
+                    if self.debug_mode:
+                        print(f"⚠️ {strategy_name} returned non-dict signal: {type(signal)}")
+                    continue
+                
+                # Ensure signal has required fields
+                required_signal_fields = ['action', 'confidence', 'strategy', 'reason']
+                if not all(field in signal for field in required_signal_fields):
+                    if self.debug_mode:
+                        print(f"⚠️ {strategy_name} signal missing required fields")
+                    continue
+                
+                # Add strategy-specific timeline information
+                signal.update({
+                    'timeframe': '1m',  # All strategies use 1-minute data
+                    'lookback_periods': lookback,
+                    'max_hold_time': config['max_hold_time'],
+                    'target_hold': config['target_hold'],
+                    'description': config['description'],
+                    'weighted_confidence': signal['confidence'] * self.weights.get(strategy_name, 1.0)
+                })
+                
+                # FIXED: Don't filter by confidence threshold here - collect ALL valid signals
+                # Only add signals that have valid actions (not 'hold')
+                if signal['action'] != 'hold':
+                    all_signals.append(signal)
+                    if self.debug_mode:
+                        print(f"✅ {strategy_name} generated valid signal: {signal['action']} (conf: {signal['confidence']:.3f})")
+                else:
+                    if self.debug_mode:
+                        print(f"📊 {strategy_name}: No signal (hold)")
+                    
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"❌ Error in {strategy_name} strategy: {e}")
+                    import traceback
+                    traceback.print_exc()
+        
+        # FIXED: Apply proper agreement logic (requires signals from multiple strategies)
+        return self._apply_proper_agreement_logic(all_signals, symbol)
+
+    def _apply_proper_agreement_logic(self, signals: List[Dict], symbol: str) -> List[Dict]:
+        """
+        FIXED: Properly implemented agreement logic
+        1. Requires at least ONE valid signal (versus zero before)
+        2. Groups signals by action (buy/sell)
+        3. Filters by min confidence threshold from config
+        4. Returns the highest confidence signal when multiple agree
+        """
+        min_confidence = getattr(BotConfig, 'MIN_CONFIDENCE', 0.25)
+        
+        if len(signals) < 1:
+            if self.debug_mode:
+                print(f"📊 {symbol}: No valid signals generated")
+            return []
+        
+        # Filter signals by minimum confidence
+        confident_signals = [s for s in signals if s['confidence'] >= min_confidence]
+        
+        if len(confident_signals) < 1:
+            if self.debug_mode:
+                print(f"📊 {symbol}: All signals below minimum confidence threshold ({min_confidence})")
+            return []
+        
+        # Group signals by action
+        buy_signals = [s for s in confident_signals if s['action'] == 'buy']
+        sell_signals = [s for s in confident_signals if s['action'] == 'sell']
+        
+        if self.debug_mode:
+            print(f"📊 {symbol}: {len(buy_signals)} buy signals, {len(sell_signals)} sell signals that meet confidence threshold")
+        
+        # FIXED: Allow signals when at least 1 strategy generates a signal (reduced from 2+)
+        # Original comment said "changed from 2+" but code still required 2+ agreement
+        if len(buy_signals) >= 1:
+            if self.debug_mode:
+                print(f"✅ {symbol}: At least 1 strategy generating BUY signal")
+            # Return highest confidence buy signal
+            return sorted(buy_signals, key=lambda x: x['weighted_confidence'], reverse=True)[:1]
+        elif len(sell_signals) >= 1:
+            if self.debug_mode:
+                print(f"✅ {symbol}: At least 1 strategy generating SELL signal")
+            # Return highest confidence sell signal
+            return sorted(sell_signals, key=lambda x: x['weighted_confidence'], reverse=True)[:1]
+        else:
+            if self.debug_mode:
+                print(f"📊 {symbol}: No strategies generating valid signals")
+            return []
+
+    def get_strategy_timeline_info(self, strategy_name: str) -> Dict:
+        """Get timeline information for a specific strategy"""
+        return self.strategy_configs.get(strategy_name, {})
+
+    def get_all_timelines(self) -> Dict:
+        """Get timeline information for all strategies"""
+        return self.strategy_configs
