@@ -147,4 +147,21 @@ class BotConfig:
     NOTIFY_TRADES = True
     NOTIFY_ERRORS = True
 
+    # Add to config.py
+    DATA_COLLECTION_ENABLED = False  # Or True if you want initial data collection
+    INITIAL_DATA_COLLECTION_MINUTES = 15
+    HYPERLIQUID_PRIVATE_KEY = ""  # Your actual key here
+    
+    # Risk management defaults
+    DYNAMIC_STOP_LOSS_PERCENT = 0.5
+    DYNAMIC_TAKE_PROFIT_PERCENT = 1.0
+    DYNAMIC_ULTRA_SCALP_SL = 0.25
+    DYNAMIC_ULTRA_SCALP_TP = 0.5
+    DYNAMIC_FAST_SCALP_SL = 0.3
+    DYNAMIC_FAST_SCALP_TP = 0.6
+    DYNAMIC_QUICK_MOMENTUM_SL = 0.4
+    DYNAMIC_QUICK_MOMENTUM_TP = 0.8
+    DYNAMIC_TTM_SQUEEZE_SL = 0.5
+    DYNAMIC_TTM_SQUEEZE_TP = 1.0
+
 __all__ = ['BotConfig']
