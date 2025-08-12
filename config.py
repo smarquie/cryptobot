@@ -147,14 +147,16 @@ class BotConfig:
     NOTIFY_TRADES = True
     NOTIFY_ERRORS = True
 
-    # Add to config.py
-    DATA_COLLECTION_ENABLED = False  # Or True if you want initial data collection
-    INITIAL_DATA_COLLECTION_MINUTES = 15
-    HYPERLIQUID_PRIVATE_KEY = ""  # Your actual key here
+    # ========== HYPERLIQUID CONFIGURATION ==========
+    HYPERLIQUID_API_KEY = "your_api_key_here"  # Leave empty for read-only mode
+    HYPERLIQUID_API_SECRET = "your_api_secret_here"  # Leave empty for read-only mode
+    HYPERLIQUID_ACCOUNT_ADDRESS = "your_wallet_address_here"  # Optional but recommended
     
     # Risk management defaults
-    DYNAMIC_STOP_LOSS_PERCENT = 0.5
-    DYNAMIC_TAKE_PROFIT_PERCENT = 1.0
+    DYNAMIC_STOP_LOSS_PERCENT = 0.5  # Global default stop loss %
+    DYNAMIC_TAKE_PROFIT_PERCENT = 1.0  # Global default take profit %
+    
+    # Strategy-specific risk parameters
     DYNAMIC_ULTRA_SCALP_SL = 0.25
     DYNAMIC_ULTRA_SCALP_TP = 0.5
     DYNAMIC_FAST_SCALP_SL = 0.3
@@ -163,5 +165,10 @@ class BotConfig:
     DYNAMIC_QUICK_MOMENTUM_TP = 0.8
     DYNAMIC_TTM_SQUEEZE_SL = 0.5
     DYNAMIC_TTM_SQUEEZE_TP = 1.0
+    
+    # Data collection settings
+    DATA_COLLECTION_ENABLED = False  # Set to True if you want initial data collection
+    INITIAL_DATA_COLLECTION_MINUTES = 15  # Only used if DATA_COLLECTION_ENABLED=True
+    MIN_DATA_MINUTES = 20  # Minimum data required before trading
 
 __all__ = ['BotConfig']
